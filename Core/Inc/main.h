@@ -57,8 +57,20 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define MODBUS1_TX_Pin GPIO_PIN_6
+#define MODBUS1_TX_GPIO_Port GPIOC
+#define MODBUS1_RX_Pin GPIO_PIN_12
+#define MODBUS1_RX_GPIO_Port GPIOA
+#define SD_SPI_SS_Pin GPIO_PIN_2
+#define SD_SPI_SS_GPIO_Port GPIOD
+#define DATA_TX_Pin GPIO_PIN_6
+#define DATA_TX_GPIO_Port GPIOB
+#define DATA_RX_Pin GPIO_PIN_7
+#define DATA_RX_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-
+// MODBUS
+extern UART_HandleTypeDef huart6;
+#define MODBUS_UART huart6
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
