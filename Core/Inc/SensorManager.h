@@ -13,6 +13,8 @@
 class SensorManager: public DeviceStateBase {
 
 private:
+	const char* MODULE_TAG = "SENS";
+
 	// Read delay timer
 	uint32_t read_time;
 	dio_timer_t read_timer;
@@ -36,6 +38,12 @@ protected:
 	void (SensorManager::*current_action) (void);
 
 public:
+	typedef enum _sensor_id_status_t {
+		SENSOR_ID_FREE_S = 0,
+		SENSOR_ID_BUSY_S,
+		SENSOR_ID_RESERVED_S
+	} sensor_id_status_t;
+
 	SensorManager(uint32_t read_time);
 	void proccess();
 	void sleep();

@@ -21,6 +21,7 @@
 #include "usart.h"
 
 /* USER CODE BEGIN 0 */
+#include "main.h"
 #include "modbus/mb.h"
 
 
@@ -29,9 +30,9 @@ uint8_t input_val = 0;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	if (huart == &MODBUS_UART) {
+	if (huart == &LOW_MB_UART) {
 		mb_rx_new_data((uint8_t)input_val);
-		HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&input_val, 1);
+		HAL_UART_Receive_IT(&LOW_MB_UART, (uint8_t*)&input_val, 1);
 	}
 }
 /* USER CODE END 0 */

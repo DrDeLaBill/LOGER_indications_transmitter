@@ -61,16 +61,22 @@ void Error_Handler(void);
 #define MODBUS1_TX_GPIO_Port GPIOC
 #define MODBUS1_RX_Pin GPIO_PIN_12
 #define MODBUS1_RX_GPIO_Port GPIOA
-#define SD_SPI_SS_Pin GPIO_PIN_2
-#define SD_SPI_SS_GPIO_Port GPIOD
+#define SPI3_SD_NSS_Pin GPIO_PIN_2
+#define SPI3_SD_NSS_GPIO_Port GPIOD
 #define DATA_TX_Pin GPIO_PIN_6
 #define DATA_TX_GPIO_Port GPIOB
 #define DATA_RX_Pin GPIO_PIN_7
 #define DATA_RX_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
+//SD card
+extern SPI_HandleTypeDef hspi3;
+#define SD_HSPI         hspi3
+#define SD_CS_GPIO_Port SPI3_SD_NSS_GPIO_Port
+#define SD_CS_Pin       SPI3_SD_NSS_Pin
 // MODBUS
 extern UART_HandleTypeDef huart6;
-#define MODBUS_UART huart6
+#define LOW_MB_UART       huart6
+#define LOW_MB_SENS_COUNT 127
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

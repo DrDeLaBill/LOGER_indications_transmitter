@@ -9,18 +9,16 @@
 
 #define MODBUS_RESPONSE_TIME          100 //ms
 
-void fn() {}
 
 SensorManager::SensorManager(uint32_t read_time) {
 	DeviceStateBase();
 	this->current_action = &SensorManager::start_action;
 	this->read_time = read_time;
-    mb_slave_address_set(0x01);
     mb_set_tx_handler(this->modbus_data_handler);
 }
 
 void SensorManager::proccess() {
-	SensorManager::current_action();
+	(this->*current_action)();
 }
 
 void SensorManager::sleep() {

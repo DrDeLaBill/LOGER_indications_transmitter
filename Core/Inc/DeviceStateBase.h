@@ -5,8 +5,9 @@
 class DeviceStateBase {
 
 protected:
-	void error();
+	const char* MODULE_TAG;
 
+	void error();
 
 public:
 	DeviceStateBase();
