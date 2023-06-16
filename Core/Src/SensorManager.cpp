@@ -1,8 +1,12 @@
 #include "SensorManager.h"
 
 #include "DeviceStateBase.h"
-#include "modbus/mb.h"
-#include "modbus/mb-table.h"
+#include "SettingsManager.h"
+extern "C"
+{
+	#include "modbus/mb.h"
+	#include "modbus/mb-table.h"
+}
 
 
 #define MODBUS_CHECK(condition, time) if (!wait_event(condition, time)) {return;}
@@ -10,10 +14,15 @@
 #define MODBUS_RESPONSE_TIME          100 //ms
 
 
-SensorManager::SensorManager(uint32_t read_time) {
+uint8_t SensorManager::mb_data[];
+uint8_t SensorManager::mb_length = 0;
+
+
+SensorManager::SensorManager() {
 	DeviceStateBase();
 	this->current_action = &SensorManager::start_action;
-	this->read_time = read_time;
+	this->read_time = SettingsManager::sttngs->sens_read_period;
+	this->clear_modbus_data();
     mb_set_tx_handler(this->modbus_data_handler);
 }
 
@@ -56,21 +65,21 @@ void SensorManager::write_sensors_data() {}
 
 void SensorManager::modbus_data_handler(uint8_t * data, uint8_t len)
 {
-    if (!len || len > sizeof(SensorManager::data)) {
+    if (!len || len > sizeof(SensorManager::mb_data)) {
         return;
     }
     SensorManager::clear_modbus_data();
-    SensorManager::length = len;
+    SensorManager::mb_length = len;
     for (uint8_t i = 0; i < len; i++) {
-    	SensorManager::data[i] = data[i];
+    	SensorManager::mb_data[i] = data[i];
     }
 }
 
 void SensorManager::clear_modbus_data()
 {
-    for (uint8_t i = 0; i < sizeof(SensorManager::data); i++) {
-    	SensorManager::data[i] = 0;
+    for (uint8_t i = 0; i < sizeof(SensorManager::mb_data); i++) {
+    	SensorManager::mb_data[i] = 0;
     }
-    SensorManager::length = 0;
+    SensorManager::mb_length = 0;
 //    SensorManager::start_time = HAL_GetTick();
 }

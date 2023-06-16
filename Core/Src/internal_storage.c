@@ -4,6 +4,7 @@
  *  Created on: 2 ���. 2022 �.
  *      Author: gauss
  */
+#include "internal_storage.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -13,7 +14,6 @@
 //
 #include "utils.h"
 #include "user_diskio_spi.h"
-#include "internal_storage.h"
 
 
 const char* STOR_MODULE_TAG = "STOR";

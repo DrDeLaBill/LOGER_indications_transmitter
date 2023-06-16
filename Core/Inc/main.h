@@ -68,7 +68,10 @@ void Error_Handler(void);
 #define DATA_RX_Pin GPIO_PIN_7
 #define DATA_RX_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-//SD card
+// General settings
+#define SENS_READ_PERIOD_MS 60000
+#define DATA_TRNS_PERIOD_MS 86400000
+// SD card
 extern SPI_HandleTypeDef hspi3;
 #define SD_HSPI         hspi3
 #define SD_CS_GPIO_Port SPI3_SD_NSS_GPIO_Port

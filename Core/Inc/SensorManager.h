@@ -3,9 +3,12 @@
 
 
 #include "DeviceStateBase.h"
-#include "utils.h"
-#include "modbus/mb-table.h"
 
+extern "C"
+{
+	#include "utils.h"
+	#include "modbus/mb-table.h"
+}
 
 #define MODBUS_DATA_OFFSET 16
 
@@ -19,8 +22,8 @@ private:
 	uint32_t read_time;
 	dio_timer_t read_timer;
 	// MODBUS data
-    static uint8_t data[TABLE_Holding_Registers_Size + MODBUS_DATA_OFFSET];
-    static uint8_t length;
+    static uint8_t mb_data[TABLE_Holding_Registers_Size + MODBUS_DATA_OFFSET];
+    static uint8_t mb_length;
 
     static void clear_modbus_data();
     static void modbus_data_handler(uint8_t * data, uint8_t len);
@@ -38,13 +41,15 @@ protected:
 	void (SensorManager::*current_action) (void);
 
 public:
+	static const uint8_t RESERVED_IDS_COUNT = 2;
+
 	typedef enum _sensor_id_status_t {
 		SENSOR_ID_FREE_S = 0,
 		SENSOR_ID_BUSY_S,
 		SENSOR_ID_RESERVED_S
 	} sensor_id_status_t;
 
-	SensorManager(uint32_t read_time);
+	SensorManager();
 	void proccess();
 	void sleep();
 	void awake();

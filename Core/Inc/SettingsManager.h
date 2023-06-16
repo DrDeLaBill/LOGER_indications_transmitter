@@ -5,7 +5,11 @@
 #include <stdint.h>
 
 #include "main.h"
-#include "internal_storage.h"
+
+extern "C"
+{
+	#include "internal_storage.h"
+}
 
 
 #define SETTINGS_SD_PAYLOAD_MAGIC   ((uint32_t)(0xBADAC0DE))
@@ -19,6 +23,8 @@ class SettingsManager {
 
 private:
 	typedef struct _payload_settings_t {
+		uint32_t sens_read_period;
+		uint32_t sens_transmit_period;
 		uint8_t low_sens_status[LOW_MB_SENS_COUNT+1];
 	} payload_settings_t;
 
@@ -39,15 +45,17 @@ private:
 
 	const char* SETTINGS_FILENAME = "settings.bin";
 
-public:
-	const uint8_t RESERVED_IDS_COUNT = 2;
+	settings_sd_payload_t sd_sttngs;
 
+	void update_public_settings();
+
+public:
 	typedef enum _settings_status_t {
 		SETTINGS_OK = 0,
 		SETTINGS_ERROR
 	} settings_status_t;
 
-	settings_sd_payload_t sttngs;
+	static payload_settings_t* sttngs;
 
 	SettingsManager();
 	settings_status_t load();
