@@ -38,7 +38,7 @@ FRESULT intstor_read_line(const char* filename, void* buf, UINT size, UINT* br, 
 
 	res = f_open(&DIOSPIFile, filename, FA_OPEN_EXISTING | FA_READ);
 	if(res != FR_OK) {
-		LOG_DEBUG(STOR_MODULE_TAG, " f_open() error=%i\r\n", res);
+		LOG_DEBUG(STOR_MODULE_TAG, " f_open() error=%i\n", res);
 		out = res;
 		goto do_close;
 	}

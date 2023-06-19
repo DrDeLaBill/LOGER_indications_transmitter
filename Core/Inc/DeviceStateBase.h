@@ -5,7 +5,7 @@
 class DeviceStateBase {
 
 protected:
-	const char* MODULE_TAG;
+	const static char* MODULE_TAG;
 
 	void error();
 

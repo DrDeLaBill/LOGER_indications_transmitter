@@ -15,7 +15,10 @@ extern "C"
 typedef SettingsManager SM;
 
 
-SM::payload_settings_t* SM::sttngs;
+const char* SM::MODULE_TAG = "STTNGS";
+const char* SM::SETTINGS_FILENAME = "settings.bin";
+SM::payload_settings_t* SM::sttngs = {0};
+SM::settings_sd_payload_t SM::sd_sttngs = {0};
 
 
 SM::SettingsManager() {
@@ -26,13 +29,13 @@ SM::SettingsManager() {
 }
 
 SM::settings_status_t SM::reset() {
-	this->sd_sttngs.v1.payload_settings.sens_read_period = SENS_READ_PERIOD_MS;
-	this->sd_sttngs.v1.payload_settings.sens_transmit_period = DATA_TRNS_PERIOD_MS;
+	SM::sd_sttngs.v1.payload_settings.sens_read_period = SENS_READ_PERIOD_MS;
+	SM::sd_sttngs.v1.payload_settings.sens_transmit_period = DATA_TRNS_PERIOD_MS;
 	for (uint8_t i = 0x00; i < SensorManager::RESERVED_IDS_COUNT; i++) {
-		this->sd_sttngs.v1.payload_settings.low_sens_status[i] = SensorManager::SENSOR_ID_RESERVED_S;
+		SM::sd_sttngs.v1.payload_settings.low_sens_status[i] = SensorManager::SENSOR_RESERVED;
 	}
-	for (uint8_t i = SensorManager::RESERVED_IDS_COUNT; i < sizeof(this->sd_sttngs.v1.payload_settings.low_sens_status); i++) {
-		this->sd_sttngs.v1.payload_settings.low_sens_status[i] = SensorManager::SENSOR_ID_FREE_S;
+	for (uint8_t i = SensorManager::RESERVED_IDS_COUNT; i < sizeof(SM::sd_sttngs.v1.payload_settings.low_sens_status); i++) {
+		SM::sd_sttngs.v1.payload_settings.low_sens_status[i] = SensorManager::SENSOR_FREE;
 	}
 	// TODO: реалитзовать проверку наличия всех датчиков с 1 по 127
 	// SensorManager::check_sensors();
@@ -45,20 +48,20 @@ SM::settings_status_t SM::load() {
 
 	UINT br;
 	bool settings_load_ok = true;
-	FRESULT res = intstor_read_file(filename, &(this->sd_sttngs), sizeof(this->sd_sttngs), &br);
+	FRESULT res = intstor_read_file(filename, &(SM::sd_sttngs), sizeof(SM::sd_sttngs), &br);
 	if(res != FR_OK) {
 		settings_load_ok = false;
 		LOG_DEBUG(MODULE_TAG, "read_file(%s) error=%i\n", filename, res);
 	}
 
-	if(this->sd_sttngs.header.magic != SETTINGS_SD_PAYLOAD_MAGIC) {
+	if(SM::sd_sttngs.header.magic != STORAGE_SD_PAYLOAD_MAGIC) {
 		settings_load_ok = false;
-		LOG_DEBUG(MODULE_TAG, "bad settings magic %08lX!=%08lX\n", this->sd_sttngs.header.magic, SETTINGS_SD_PAYLOAD_MAGIC);
+		LOG_DEBUG(MODULE_TAG, "bad settings magic %08lX!=%08lX\n", SM::sd_sttngs.header.magic, STORAGE_SD_PAYLOAD_MAGIC);
 	}
 
-	if(this->sd_sttngs.header.version != SETTINGS_SD_PAYLOAD_VERSION) {
+	if(SM::sd_sttngs.header.version != STORAGE_SD_PAYLOAD_VERSION) {
 		settings_load_ok = false;
-		LOG_DEBUG(MODULE_TAG, "bad settings version %i!=%i\n", this->sd_sttngs.header.version, SETTINGS_SD_PAYLOAD_VERSION);
+		LOG_DEBUG(MODULE_TAG, "bad settings version %i!=%i\n", SM::sd_sttngs.header.version, STORAGE_SD_PAYLOAD_VERSION);
 	}
 
 	if(!settings_load_ok) {
@@ -72,37 +75,37 @@ SM::settings_status_t SM::load() {
 		return this->save();
 	}
 
-	this->update_public_settings();
+	SM::update_public_settings();
 	return SETTINGS_OK;
 }
 
 SM::settings_status_t SM::save() {
-	this->sd_sttngs.header.magic = SETTINGS_SD_PAYLOAD_MAGIC;
-	this->sd_sttngs.header.version = SETTINGS_SD_PAYLOAD_VERSION;
+	SM::sd_sttngs.header.magic = STORAGE_SD_PAYLOAD_MAGIC;
+	SM::sd_sttngs.header.version = STORAGE_SD_PAYLOAD_VERSION;
 
 	WORD crc = 0;
-	for(uint16_t i = 0; i < sizeof(this->sd_sttngs.bits); i++)
-		DIO_SPI_CardCRC16(&crc, this->sd_sttngs.bits[i]);
-	this->sd_sttngs.crc = crc;
+	for(uint16_t i = 0; i < sizeof(SM::sd_sttngs.bits); i++)
+		DIO_SPI_CardCRC16(&crc, SM::sd_sttngs.bits[i]);
+	SM::sd_sttngs.crc = crc;
 
-	LOG_DEBUG(MODULE_TAG, "saving settings\n");
-	Debug_HexDump(MODULE_TAG, (uint8_t*)&(this->sd_sttngs), sizeof(this->sd_sttngs));
+	LOG_DEBUG(SM::MODULE_TAG, "saving settings\n");
+	Debug_HexDump(MODULE_TAG, (uint8_t*)&(SM::sd_sttngs), sizeof(SM::sd_sttngs));
 
 	char filename[64];
 	snprintf(filename, sizeof(filename), "%s" "%s", DIOSPIPath, SETTINGS_FILENAME);
 
 	UINT br;
-	FRESULT res = intstor_write_file(filename, &(this->sd_sttngs), sizeof(this->sd_sttngs), &br);
+	FRESULT res = intstor_write_file(filename, &(SM::sd_sttngs), sizeof(SM::sd_sttngs), &br);
 	if(res != FR_OK) {
 		LOG_DEBUG(MODULE_TAG, "settings NOT saved\n");
 		return SETTINGS_ERROR;
 	}
 
 	LOG_DEBUG(MODULE_TAG, "settings saved\n");
-	this->update_public_settings();
+	SM::update_public_settings();
 	return SETTINGS_OK;
 }
 
 void SM::update_public_settings() {
-	SM::sttngs = &(this->sd_sttngs.v1.payload_settings);
+	SM::sttngs = &(SM::sd_sttngs.v1.payload_settings);
 }

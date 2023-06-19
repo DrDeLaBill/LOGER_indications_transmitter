@@ -10,11 +10,18 @@
 
 #include "stm32f4xx_hal.h"
 
+
 #define SD_PAYLOAD_BITS_SIZE(S) ( 			\
 	S 										\
 	- sizeof(struct _sd_payload_header_t)	\
 	- sizeof(uint16_t)						\
 )
+
+#define STORAGE_SD_PAYLOAD_MAGIC   ((uint32_t)(0xBADAC0DE))
+#define STORAGE_SD_PAYLOAD_VERSION (1)
+
+
+#define STORAGE_SD_MAX_PAYLOAD_SIZE 512
 
 
 struct _sd_payload_header_t {

@@ -12,17 +12,10 @@ extern "C"
 }
 
 
-#define SETTINGS_SD_PAYLOAD_MAGIC   ((uint32_t)(0xBADAC0DE))
-#define SETTINGS_SD_PAYLOAD_VERSION (1)
-
-
-#define SETTINGS_SD_MAX_PAYLOAD_SIZE 512
-
-
 class SettingsManager {
 
 private:
-	typedef struct _payload_settings_t {
+	typedef struct __attribute__((packed)) _payload_settings_t  {
 		uint32_t sens_read_period;
 		uint32_t sens_transmit_period;
 		uint8_t low_sens_status[LOW_MB_SENS_COUNT+1];
@@ -31,7 +24,7 @@ private:
 	typedef union _settings_sd_payload_t {
 		struct __attribute__((packed)) {
 			struct _sd_payload_header_t header;
-			uint8_t bits[SD_PAYLOAD_BITS_SIZE(SETTINGS_SD_MAX_PAYLOAD_SIZE)];
+			uint8_t bits[SD_PAYLOAD_BITS_SIZE(STORAGE_SD_MAX_PAYLOAD_SIZE)];
 			uint16_t crc;
 		};
 		struct __attribute__((packed)) {
@@ -41,13 +34,13 @@ private:
 	} settings_sd_payload_t;
 
 
-	const char* MODULE_TAG = "STTNGS";
+	static const char* MODULE_TAG;
 
-	const char* SETTINGS_FILENAME = "settings.bin";
+	static const char* SETTINGS_FILENAME;
 
-	settings_sd_payload_t sd_sttngs;
+	static settings_sd_payload_t sd_sttngs;
 
-	void update_public_settings();
+	static void update_public_settings();
 
 public:
 	typedef enum _settings_status_t {
@@ -59,8 +52,8 @@ public:
 
 	SettingsManager();
 	settings_status_t load();
-	settings_status_t save();
 	settings_status_t reset();
+	static settings_status_t save();
 
 };
 

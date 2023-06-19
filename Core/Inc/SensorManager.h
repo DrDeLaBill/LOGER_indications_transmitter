@@ -2,57 +2,74 @@
 #define INC_SENSORMANAGER_H_
 
 
+#include <stdint.h>
+
 #include "DeviceStateBase.h"
 
 extern "C"
 {
 	#include "utils.h"
+	#include "internal_storage.h"
 	#include "modbus/mb-table.h"
 }
+
 
 #define MODBUS_DATA_OFFSET 16
 
 
 class SensorManager: public DeviceStateBase {
 
-private:
-	const char* MODULE_TAG = "SENS";
-
-	// Read delay timer
-	uint32_t read_time;
-	dio_timer_t read_timer;
-	// MODBUS data
-    static uint8_t mb_data[TABLE_Holding_Registers_Size + MODBUS_DATA_OFFSET];
-    static uint8_t mb_length;
-
-    static void clear_modbus_data();
-    static void modbus_data_handler(uint8_t * data, uint8_t len);
-
-    // Sensors state actions
-    void start_action();
-    void wait_action();
-    void record_action();
-    void register_action();
-    void sleep_action();
-
-    void write_sensors_data();
-
-protected:
-	void (SensorManager::*current_action) (void);
-
 public:
 	static const uint8_t RESERVED_IDS_COUNT = 2;
 
 	typedef enum _sensor_id_status_t {
-		SENSOR_ID_FREE_S = 0,
-		SENSOR_ID_BUSY_S,
-		SENSOR_ID_RESERVED_S
+		SENSOR_FREE = 0,
+		SENSOR_RESERVED,
+		SENSOR_ERROR,
+		SENSOR_TYPE_THERMAL,
+		SENSOR_TYPE_HUMIDITY,
+		SENSOR_TYPE_OTHER
 	} sensor_id_status_t;
 
 	SensorManager();
 	void proccess();
 	void sleep();
 	void awake();
+
+private:
+	static const char* MODULE_TAG;
+
+    // Modbus
+	static uint8_t current_slave_id;
+	uint32_t read_time;
+	dio_timer_t wait_timer;
+	uint8_t error_count;
+
+    static void send_request(uint8_t* data,uint8_t Len);
+    static void master_process(mb_packet_s* packet);
+    void update_modbus_slave_id();
+    void registrate_modbus_error();
+    void write_sensors_data();
+
+    // Sensors state actions
+    void start_action();
+    void wait_action();
+    void request_action();
+    void wait_response_action();
+    void success_response_action();
+    void error_response_action();
+    void register_action();
+    void sleep_action();
+
+protected:
+    typedef enum _sensor_read_status_typedef {
+    	SENS_WAIT = 0,
+		SENS_SUCCESS,
+		SENS_ERROR
+    } sensor_read_status;
+
+	void (SensorManager::*current_action) (void);
+	static sensor_read_status sens_status;
 
 };
 

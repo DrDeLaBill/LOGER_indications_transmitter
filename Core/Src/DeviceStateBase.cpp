@@ -1,6 +1,8 @@
 #include "DeviceStateBase.h"
 
 
+const char* DeviceStateBase::MODULE_TAG = "BASE";
+
 
 DeviceStateBase::DeviceStateBase() {}
 
