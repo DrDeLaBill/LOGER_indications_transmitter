@@ -80,6 +80,11 @@ extern SPI_HandleTypeDef hspi3;
 extern UART_HandleTypeDef huart6;
 #define LOW_MB_UART       huart6
 #define LOW_MB_SENS_COUNT 127
+// CUP slave
+extern UART_HandleTypeDef huart2;
+extern TIM_HandleTypeDef  htim1;
+#define CUP_UART          huart2
+#define CUP_TIM			  htim1
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

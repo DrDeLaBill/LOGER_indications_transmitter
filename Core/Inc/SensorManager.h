@@ -36,6 +36,8 @@ public:
 	void sleep();
 	void awake();
 
+	uint8_t* get_sensors_data();
+
 private:
 	static const char* MODULE_TAG;
 

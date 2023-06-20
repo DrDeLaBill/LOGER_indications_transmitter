@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+#include "SettingsManager.h"
+
 
 const char* CUPSlaveManager::MODULE_TAG = "CUP";
 
@@ -75,29 +77,26 @@ void CUPSlaveManager::reset_data() {
 }
 
 void CUPSlaveManager::save_request_data() {
-	uint8_t* ptr = NULL;
-	switch (this->request.command) {
-		case CUP_CMD_STATUS:
-			break;
-		case CUP_CMD_SENSRS:
-			ptr = (uint8_t*)this->sensors_data;
-			break;
-		case CUP_CMD_STTNGS:
-			ptr = (uint8_t*)this->settings_data;
-			break;
-		default:
-			break;
-	};
+	if (this->request.command != CUP_CMD_STTNGS) {
+		return;
+	}
+
+	uint8_t* ptr = (uint8_t*)this->settings_data;
+
 	if (!ptr) {
 		LOG_DEBUG(MODULE_TAG, " ERROR - no data to save\n");
 		return;
 	}
+
 	if (this->request.data_len != sizeof(ptr)) {
 		LOG_DEBUG(MODULE_TAG, " ERROR - invalid request data\n");
 		return;
 	}
+
 	memcpy(ptr, (uint8_t*)this->request.data, this->request.data_len);
 	Debug_HexDump(MODULE_TAG, ptr, this->request.data_len);
+
+	SettingsManager::save();
 }
 
 void CUPSlaveManager::status_wait(uint8_t msg) {

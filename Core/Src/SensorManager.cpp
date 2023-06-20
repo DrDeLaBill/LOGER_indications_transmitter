@@ -14,7 +14,7 @@ extern "C"
 }
 
 
-#define MODBUS_CHECK(condition, time) if (!wait_event(condition, time)) {return;}
+#define MODBUS_CHECK(condition, time) if (!Wait_Event(condition, time)) {return;}
 
 #define MODBUS_RESPONSE_TIME          100 //ms
 
@@ -57,17 +57,17 @@ void SensorManager::start_action() {
 }
 
 void SensorManager::wait_action() {
+	this->current_action = &SensorManager::request_action;
 	if (Util_TimerPending(&this->wait_timer)) {
 		return;
 	}
-	this->current_action = &SensorManager::request_action;
+	this->write_sensors_data();
 }
 
 void SensorManager::request_action() {
 	if (this->current_slave_id >= LOW_MB_SENS_COUNT) {
 		this->current_slave_id = RESERVED_IDS_COUNT;
 		this->current_action = &SensorManager::wait_action;
-		this->write_sensors_data();
 		Util_TimerStart(&this->wait_timer, this->read_time);
 		return;
 	}
@@ -102,7 +102,6 @@ void SensorManager::wait_response_action() {
 }
 
 void SensorManager::success_response_action() {
-	this->write_sensors_data();
 	this->update_modbus_slave_id();
 	this->current_action = &SensorManager::request_action;
 }
@@ -155,4 +154,8 @@ void SensorManager::update_modbus_slave_id() {
 
 void SensorManager::registrate_modbus_error() {
 	SettingsManager::sttngs->low_sens_status[this->current_slave_id] = SENSOR_ERROR;
+}
+
+uint8_t* SensorManager::get_sensors_data() {
+	return (uint8_t*)RecordManager::sd_record.v1.payload_record.sensors_values;
 }

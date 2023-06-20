@@ -21,6 +21,7 @@
 #include "crc.h"
 #include "fatfs.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -48,18 +49,55 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+SettingsManager stngs_m;
+SensorManager sens_m;
+CUPSlaveManager CUP_manager;
+
+uint8_t low_modbus_uart_val = 0;
+uint8_t CUP_uart_val = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-void CUPSlaveManager::update_sensors_handler(void) {}
-void CUPSlaveManager::update_settings_handler(void) {}
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void CUPSlaveManager::update_sensors_handler() {
+	this->sensors_data = (uint8_t*)sens_m.get_sensors_data();
+}
 
+void CUPSlaveManager::update_settings_handler() {
+	this->settings_data = (uint8_t*)SettingsManager::sttngs;
+}
+
+void CUPSlaveManager::send_byte(uint8_t msg) {
+	HAL_UART_Transmit(&CUP_UART, &msg, 1, CUP_WAIT_TIMEOUT);
+}
+
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if (huart == &LOW_MB_UART) {
+		mb_rx_new_data((uint8_t)low_modbus_uart_val);
+		HAL_UART_Receive_IT(&LOW_MB_UART, (uint8_t*)&low_modbus_uart_val, 1);
+	} else if (huart == &CUP_UART) {
+		CUP_manager.char_data_handler(CUP_uart_val);
+		HAL_UART_Receive_IT(&CUP_UART, (uint8_t*)&CUP_uart_val, 1);
+		HAL_TIM_Base_Start(&CUP_TIM);
+		CUP_TIM.Instance->CNT &= 0x00;
+	}
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if(htim == &CUP_TIM) {
+		CUP_manager.reset_data();
+		HAL_TIM_Base_Stop(&CUP_TIM);
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -95,9 +133,10 @@ int main(void)
   MX_USART6_UART_Init();
   MX_USART1_UART_Init();
   MX_FATFS_Init();
+  MX_USART2_UART_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  SettingsManager stngs_m;
-  SensorManager sens_m;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -105,9 +144,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
 	  sens_m.proccess();
+    /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }
