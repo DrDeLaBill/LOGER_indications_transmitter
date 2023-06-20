@@ -47,7 +47,7 @@ typedef struct _dio_timer_t {
 void Util_TimerStart(dio_timer_t* tm, uint32_t waitMs);
 uint8_t Util_TimerPending(dio_timer_t* tm);
 
-bool wait_event(bool (*condition) (void), uint32_t time);
+bool Wait_Event(bool (*condition) (void), uint32_t time);
 
 void Debug_HexDump(const char* tag, const uint8_t* buf, uint16_t len);
 

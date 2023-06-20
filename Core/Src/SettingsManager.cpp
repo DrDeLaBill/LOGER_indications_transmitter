@@ -37,7 +37,7 @@ SM::settings_status_t SM::reset() {
 	for (uint8_t i = SensorManager::RESERVED_IDS_COUNT; i < sizeof(SM::sd_sttngs.v1.payload_settings.low_sens_status); i++) {
 		SM::sd_sttngs.v1.payload_settings.low_sens_status[i] = SensorManager::SENSOR_FREE;
 	}
-	// TODO: реалитзовать проверку наличия всех датчиков с 1 по 127
+	// TODO: реалитзовать проверку наличия всех датчиков со 2 по 127
 	// SensorManager::check_sensors();
 	return this->save();
 }

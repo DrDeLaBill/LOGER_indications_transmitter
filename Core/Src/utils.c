@@ -14,7 +14,7 @@ uint8_t Util_TimerPending(dio_timer_t* tm) {
 	return (HAL_GetTick() - tm->start) < tm->delay;
 }
 
-bool wait_event(bool (*condition) (void), uint32_t time)
+bool Wait_Event(bool (*condition) (void), uint32_t time)
 {
     uint32_t start_time = HAL_GetTick();
     while (__abs(start_time - HAL_GetTick()) < time) {

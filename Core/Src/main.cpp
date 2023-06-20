@@ -28,6 +28,7 @@
 /* USER CODE BEGIN Includes */
 #include "SettingsManager.h"
 #include "SensorManager.h"
+#include "CUPSlaveManager.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,13 +48,13 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void CUPSlaveManager::update_sensors_handler(void) {}
+void CUPSlaveManager::update_settings_handler(void) {}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
