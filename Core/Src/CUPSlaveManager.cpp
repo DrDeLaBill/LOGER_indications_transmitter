@@ -12,21 +12,15 @@ CUPSlaveManager::CUPSlaveManager() {
 	this->reset_data();
 }
 
-void CUPSlaveManager::set_settings_data(uint8_t* data) {
-	this->settings_data = data;
-}
-
-void CUPSlaveManager::set_sensors_data(uint8_t* data) {
-	this->sensors_data = data;
-}
-
 void CUPSlaveManager::char_data_handler(uint8_t msg) {
 	(this->*curr_status_action)(msg);
 }
 
 void CUPSlaveManager::send_response() {
 	switch (this->request.command) {
-		case CUP_CMD_STATUS:
+		case CUP_CMD_DEVICE:
+			this->update_device_handler();
+			this->response.data = this->device_data;
 			break;
 		case CUP_CMD_SENSRS:
 			this->update_sensors_handler();
@@ -102,7 +96,7 @@ void CUPSlaveManager::save_request_data() {
 void CUPSlaveManager::status_wait(uint8_t msg) {
 	this->request.command = (CUP_command)msg;
 	switch (msg) {
-		case CUP_CMD_STATUS:
+		case CUP_CMD_DEVICE:
 		case CUP_CMD_SENSRS:
 		case CUP_CMD_STTNGS:
 			this->curr_status_action = &CUPSlaveManager::status_data_len;

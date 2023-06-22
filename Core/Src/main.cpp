@@ -65,6 +65,15 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void CUPSlaveManager::update_device_handler() {
+	stngs_m.device_info.device_type = SettingsManager::DEVICE_TYPE_LOGER;
+	stngs_m.device_info.id_base1 = 	(uint16_t)(UID_BASE);
+	stngs_m.device_info.id_base2 = (uint16_t)(UID_BASE + 0x02);
+	stngs_m.device_info.id_base3 = (uint32_t)(UID_BASE + 0x04);
+	stngs_m.device_info.id_base4 = (uint32_t)(UID_BASE + 0x08);
+	this->device_data = (uint8_t*)&(stngs_m.device_info);
+}
+
 void CUPSlaveManager::update_sensors_handler() {
 	this->sensors_data = (uint8_t*)sens_m.get_sensors_data();
 }

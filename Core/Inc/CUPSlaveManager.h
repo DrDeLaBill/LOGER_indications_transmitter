@@ -23,7 +23,7 @@ private:
 	static const char* MODULE_TAG;
 
 	typedef enum _CUP_command_typedef {
-		CUP_CMD_STATUS = 0x01,
+		CUP_CMD_DEVICE = 0x01,
 		CUP_CMD_STTNGS,
 		CUP_CMD_SENSRS,
 	} CUP_command;
@@ -33,6 +33,7 @@ private:
 
 
 	uint8_t data_counter = 0;
+	uint8_t* device_data;
 	uint8_t* settings_data;
 	uint8_t* sensors_data;
 
@@ -65,9 +66,7 @@ public:
 	void send_byte(uint8_t msg);
 	void reset_data();
 
-	void set_settings_data(uint8_t* data);
-	void set_sensors_data(uint8_t* data);
-
+	void update_device_handler(void);
 	// Update sensors data function, implemented outside the class
 	void update_sensors_handler(void);
 	// Update settings data function, implemented outside the class

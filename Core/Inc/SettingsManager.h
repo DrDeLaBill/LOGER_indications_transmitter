@@ -48,6 +48,19 @@ public:
 		SETTINGS_ERROR
 	} settings_status_t;
 
+	typedef enum _device_type_t {
+		DEVICE_TYPE_LOGER = 0x01,
+		DEVICE_TYPE_MAIN
+	} device_type_t;
+
+	struct device_info_t {
+		device_type_t device_type;
+		uint16_t id_base1;
+		uint16_t id_base2;
+		uint32_t id_base3;
+		uint32_t id_base4;
+	} device_info;
+
 	static payload_settings_t* sttngs;
 
 	SettingsManager();
