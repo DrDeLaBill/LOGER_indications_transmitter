@@ -5,6 +5,7 @@
 
 #include "main.h"
 #include "SensorManager.h"
+// TODO: переместить extern в исходники .c
 extern "C"
 {
 	#include "internal_storage.h"
@@ -106,6 +107,7 @@ SM::settings_status_t SM::save() {
 	return SETTINGS_OK;
 }
 
+// TODO: переместить в конструктор, удалить функцию
 void SM::update_public_settings() {
 	SM::sttngs = &(SM::sd_sttngs.v1.payload_settings);
 }
