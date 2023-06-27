@@ -69,6 +69,7 @@ void Error_Handler(void);
 #define DATA_RX_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 // General settings
+#define DEVICE_VERSION      0x01
 #define SENS_READ_PERIOD_MS 60000
 #define DATA_TRNS_PERIOD_MS 86400000
 // SD card

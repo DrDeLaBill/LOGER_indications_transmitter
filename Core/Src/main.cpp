@@ -67,6 +67,7 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 void CUPSlaveManager::update_device_handler() {
 	stngs_m.device_info.device_type = SettingsManager::DEVICE_TYPE_LOGER;
+	stngs_m.device_info.device_version = DEVICE_VERSION;
 	stngs_m.device_info.id_base1 = 	(uint16_t)(UID_BASE);
 	stngs_m.device_info.id_base2 = (uint16_t)(UID_BASE + 0x02);
 	stngs_m.device_info.id_base3 = (uint32_t)(UID_BASE + 0x04);
@@ -103,7 +104,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim == &CUP_TIM) {
-		CUP_manager.reset_data();
+		CUP_manager.timeout();
 		HAL_TIM_Base_Stop(&CUP_TIM);
 	}
 }

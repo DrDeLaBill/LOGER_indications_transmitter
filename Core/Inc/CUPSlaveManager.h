@@ -46,6 +46,7 @@ private:
 
 	void send_response();
 	void send_error();
+	void reset_data();
 	void save_request_data();
 	uint8_t get_CRC8(uint8_t* buffer, uint8_t size);
 
@@ -64,7 +65,7 @@ public:
 
 	void char_data_handler(uint8_t msg);
 	void send_byte(uint8_t msg);
-	void reset_data();
+	void timeout();
 
 	void update_device_handler(void);
 	// Update sensors data function, implemented outside the class

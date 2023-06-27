@@ -49,12 +49,14 @@ public:
 	} settings_status_t;
 
 	typedef enum _device_type_t {
-		DEVICE_TYPE_LOGER = 0x01,
+		DEVICE_TUPE_UNKNOWN = 0x00,
+		DEVICE_TYPE_LOGER,
 		DEVICE_TYPE_MAIN
 	} device_type_t;
 
 	struct device_info_t {
 		device_type_t device_type;
+		uint8_t device_version;
 		uint16_t id_base1;
 		uint16_t id_base2;
 		uint32_t id_base3;

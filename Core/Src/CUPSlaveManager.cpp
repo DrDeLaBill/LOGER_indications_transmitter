@@ -47,6 +47,11 @@ void CUPSlaveManager::send_response() {
 	this->reset_data();
 }
 
+void CUPSlaveManager::timeout()
+{
+	this->send_error();
+}
+
 void CUPSlaveManager::send_error() {
 	this->response.command = (CUP_command)(0xFF ^ (uint8_t)this->request.command);
 	this->response.data_len = 1;
