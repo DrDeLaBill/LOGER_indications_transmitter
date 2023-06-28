@@ -21,51 +21,52 @@ void CUPSlaveManager::send_response() {
 		case CUP_CMD_DEVICE:
 			this->update_device_handler();
 			this->response.data = this->device_data;
+			this->response.data_len = this->device_data_len;
 			break;
 		case CUP_CMD_SENSRS:
 			this->update_sensors_handler();
 			this->response.data = this->sensors_data;
+			this->response.data_len = this->sensors_data_len;
 			break;
 		case CUP_CMD_STTNGS:
 			this->update_settings_handler();
 			this->response.data = this->settings_data;
+			this->response.data_len = this->settings_data_len;
 			break;
 		default:
-			this->send_error();
-			return;
+			break;
 	};
 	this->response.command = this->request.command;
-	this->response.data_len = sizeof(this->response.data);
 
-	uint8_t* ptr = (uint8_t*)&this->response;
-	this->response.crc8 = this->get_CRC8(ptr, sizeof(response) - 1);
+	this->response.crc8 = this->get_message_crc(&(this->response));
 
-	for (uint8_t *i = ptr; i < ptr + sizeof(this->response); i++) {
-		this->send_byte(*i);
+	this->send_byte(this->response.command);
+	this->send_byte(this->response.data_len);
+	for (uint8_t i = 0; i < this->response.data_len; i++) {
+		this->send_byte(this->response.data[i]);
 	}
+	this->send_byte(this->response.crc8);
 
 	this->reset_data();
 }
 
 void CUPSlaveManager::timeout()
 {
-	this->send_error();
+  if (this->curr_status_action == &CUPSlaveManager::status_wait) {
+    return;
+  }
+	this->send_error(CUP_ERROR_TIMEOUT);
 }
 
-void CUPSlaveManager::send_error() {
-	this->response.command = (CUP_command)(0xFF ^ (uint8_t)this->request.command);
+void CUPSlaveManager::send_error(CUP_error error_type) {
+	this->request.command = (CUP_command)(0xFF ^ (uint8_t)this->request.command);
 	this->response.data_len = 1;
-	uint8_t data_buf[1] = {0xFF};
+	uint8_t data_buf[1] = {error_type};
 	this->response.data = (uint8_t*)data_buf;
 
-	uint8_t* ptr = (uint8_t*)&this->response;
-	this->response.crc8 = this->get_CRC8(ptr, sizeof(response) - 1);
+	this->response.crc8 = this->get_message_crc(&(this->response));
 
-	for (uint8_t *i = ptr; i < ptr + sizeof(this->response); i++) {
-		this->send_byte(*i);
-	}
-
-	this->reset_data();
+	this->send_response();
 }
 
 void CUPSlaveManager::reset_data() {
@@ -107,7 +108,7 @@ void CUPSlaveManager::status_wait(uint8_t msg) {
 			this->curr_status_action = &CUPSlaveManager::status_data_len;
 			break;
 		default:
-			this->send_error();
+			this->send_error(CUP_ERROR_COMMAND);
 			break;
 	};
 }
@@ -124,12 +125,12 @@ void CUPSlaveManager::status_data_len(uint8_t msg) {
 void CUPSlaveManager::status_data(uint8_t msg) {
 	if (!sizeof(this->request.data)) {
 		LOG_DEBUG(MODULE_TAG, " ERROR - CUP data buffer is NULL\n");
-		this->reset_data();
+		this->send_error(CUP_ERROR_DATA_DOES_NOT_EXIST);
 		return;
 	}
 	if (this->data_counter > sizeof(this->request.data)) {
 		LOG_DEBUG(MODULE_TAG, " ERROR - CUP buffer out of range\n");
-		this->reset_data();
+		this->send_error(CUP_ERROR_DATA_OVERLOAD);
 		return;
 	}
 	this->request.data[this->data_counter++] = msg;
@@ -140,12 +141,28 @@ void CUPSlaveManager::status_data(uint8_t msg) {
 
 void CUPSlaveManager::status_check_crc(uint8_t msg) {
 	this->request.crc8 = msg;
-	uint8_t* ptr = (uint8_t*)&this->request;
-	if (this->request.crc8 == this->get_CRC8(ptr, sizeof(this->request) - 1)) {
+
+	if (msg == this->get_message_crc(&(this->request))) {
 		this->save_request_data();
 		this->send_response();
+		this->reset_data();
+		return;
 	}
-	this->reset_data();
+
+	this->send_error(CUP_ERROR_CRC);
+}
+
+uint8_t CUPSlaveManager::get_message_crc(CUP_message* message)
+{
+	uint8_t* crc_buffer = new uint8_t[2 + message->data_len];
+	crc_buffer[0] = message->command;
+	crc_buffer[1] = message->data_len;
+	for (uint8_t i = 0; i < message->data_len; i++) {
+		crc_buffer[2 + i] = message->data[i];
+	}
+	uint8_t crc = get_CRC8(crc_buffer, sizeof(crc_buffer));
+	delete [] crc_buffer;
+	return crc;
 }
 
 uint8_t CUPSlaveManager::get_CRC8(uint8_t* buffer, uint8_t size) {

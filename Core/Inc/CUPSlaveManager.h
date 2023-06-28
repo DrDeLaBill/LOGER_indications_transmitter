@@ -28,27 +28,14 @@ private:
 		CUP_CMD_SENSRS,
 	} CUP_command;
 
-
-	const uint8_t CUP_WAIT_TIMEOUT = 100;
-
-
-	uint8_t data_counter = 0;
-	uint8_t* device_data;
-	uint8_t* settings_data;
-	uint8_t* sensors_data;
-
-	void (CUPSlaveManager::*curr_status_action) (uint8_t msg);
-	void status_wait(uint8_t msg);
-	void status_status(uint8_t msg);
-	void status_data_len(uint8_t msg);
-	void status_data(uint8_t msg);
-	void status_check_crc(uint8_t msg);
-
-	void send_response();
-	void send_error();
-	void reset_data();
-	void save_request_data();
-	uint8_t get_CRC8(uint8_t* buffer, uint8_t size);
+	typedef enum _CUP_error_typedef {
+		CUP_ERROR_COMMAND = 0x01,
+		CUP_ERROR_DATA_LEN,
+		CUP_ERROR_DATA_OVERLOAD,
+		CUP_ERROR_DATA_DOES_NOT_EXIST,
+		CUP_ERROR_CRC,
+		CUP_ERROR_TIMEOUT
+	} CUP_error;
 
 public:
 	typedef struct _CUP_message {
@@ -58,6 +45,34 @@ public:
 		uint8_t crc8;
 	} CUP_message;
 
+private:
+
+	const uint8_t CUP_WAIT_TIMEOUT = 100;
+
+
+	uint8_t data_counter = 0;
+	uint8_t* device_data;
+	uint8_t  device_data_len = 0;
+	uint8_t* settings_data;
+	uint8_t  settings_data_len = 0;
+	uint8_t* sensors_data;
+	uint8_t  sensors_data_len = 0;
+
+	void (CUPSlaveManager::*curr_status_action) (uint8_t msg);
+	void status_wait(uint8_t msg);
+	void status_status(uint8_t msg);
+	void status_data_len(uint8_t msg);
+	void status_data(uint8_t msg);
+	void status_check_crc(uint8_t msg);
+
+	void send_response();
+	void send_error(CUP_error error_type);
+	void reset_data();
+	void save_request_data();
+	uint8_t get_message_crc(CUP_message* message);
+	uint8_t get_CRC8(uint8_t* buffer, uint8_t size);
+
+public:
 	CUP_message request;
 	CUP_message response;
 

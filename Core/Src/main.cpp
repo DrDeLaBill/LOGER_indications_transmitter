@@ -30,6 +30,7 @@
 #include "SettingsManager.h"
 #include "SensorManager.h"
 #include "CUPSlaveManager.h"
+#include "RecordManager.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -68,19 +69,22 @@ void SystemClock_Config(void);
 void CUPSlaveManager::update_device_handler() {
 	stngs_m.device_info.device_type = SettingsManager::DEVICE_TYPE_LOGER;
 	stngs_m.device_info.device_version = DEVICE_VERSION;
-	stngs_m.device_info.id_base1 = 	(uint16_t)(UID_BASE);
-	stngs_m.device_info.id_base2 = (uint16_t)(UID_BASE + 0x02);
-	stngs_m.device_info.id_base3 = (uint32_t)(UID_BASE + 0x04);
-	stngs_m.device_info.id_base4 = (uint32_t)(UID_BASE + 0x08);
+	stngs_m.device_info.id_base1 = *((uint16_t*)(UID_BASE));
+	stngs_m.device_info.id_base2 = *((uint16_t*)(UID_BASE + 0x02));
+	stngs_m.device_info.id_base3 = *((uint32_t*)(UID_BASE + 0x04));
+	stngs_m.device_info.id_base4 = *((uint32_t*)(UID_BASE + 0x08));
 	this->device_data = (uint8_t*)&(stngs_m.device_info);
+	this->device_data_len = sizeof(SettingsManager::device_info_t);
 }
 
 void CUPSlaveManager::update_sensors_handler() {
-	this->sensors_data = (uint8_t*)sens_m.get_sensors_data();
+	this->sensors_data = (uint8_t*)&(RecordManager::sd_record.v1.payload_record.sensors_values);
+	this->sensors_data_len = (uint8_t)sizeof(RecordManager::sd_record.v1.payload_record.sensors_values);
 }
 
 void CUPSlaveManager::update_settings_handler() {
 	this->settings_data = (uint8_t*)SettingsManager::sttngs;
+	this->settings_data_len = sizeof(SettingsManager::payload_settings_t);
 }
 
 void CUPSlaveManager::send_byte(uint8_t msg) {

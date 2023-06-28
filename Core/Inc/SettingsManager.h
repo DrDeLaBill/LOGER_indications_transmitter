@@ -14,13 +14,14 @@ extern "C"
 
 class SettingsManager {
 
-private:
+public:
 	typedef struct __attribute__((packed)) _payload_settings_t  {
 		uint32_t sens_read_period;
 		uint32_t sens_transmit_period;
 		uint8_t low_sens_status[LOW_MB_SENS_COUNT+1];
 	} payload_settings_t;
 
+private:
 	typedef union _settings_sd_payload_t {
 		struct __attribute__((packed)) {
 			struct _sd_payload_header_t header;
@@ -55,7 +56,7 @@ public:
 	} device_type_t;
 
 	struct device_info_t {
-		device_type_t device_type;
+		uint8_t device_type;
 		uint8_t device_version;
 		uint16_t id_base1;
 		uint16_t id_base2;
