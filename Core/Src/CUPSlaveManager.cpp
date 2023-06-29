@@ -17,7 +17,9 @@ void CUPSlaveManager::char_data_handler(uint8_t msg) {
 }
 
 void CUPSlaveManager::send_response() {
-	switch (this->request.command) {
+	this->response.command = this->request.command;
+
+	switch (this->response.command) {
 		case CUP_CMD_DEVICE:
 			this->update_device_handler();
 			this->response.data = this->device_data;
@@ -36,16 +38,22 @@ void CUPSlaveManager::send_response() {
 		default:
 			break;
 	};
-	this->response.command = this->request.command;
 
-	this->response.crc8 = this->get_message_crc(&(this->response));
-
-	this->send_byte(this->response.command);
-	this->send_byte(this->response.data_len);
+	uint16_t buffer_size = 3 + this->response.data_len;
+	uint8_t* response_buffer = new uint8_t[buffer_size];
+	response_buffer[0] = this->response.command;
+	response_buffer[1] = this->response.data_len;
 	for (uint8_t i = 0; i < this->response.data_len; i++) {
-		this->send_byte(this->response.data[i]);
+		response_buffer[2 + i] = this->response.data[i];
 	}
-	this->send_byte(this->response.crc8);
+	this->response.crc8 = this->get_CRC8(response_buffer, buffer_size - 1);
+	response_buffer[buffer_size - 1] = this->response.crc8;
+
+	for (uint16_t i = 0; i < buffer_size; i++) {
+		this->send_byte(response_buffer[i]);
+	}
+
+	delete [] response_buffer;
 
 	this->reset_data();
 }
