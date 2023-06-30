@@ -17,7 +17,7 @@
 
 #define MODBUS_REQ_TIMEOUT            100 //ms
 
-#define MODBUS_MAX_ERRORS             5
+#define MODBUS_MAX_ERRORS             50
 
 
 const char* SensorManager::MODULE_TAG = "SENS";
@@ -77,7 +77,12 @@ void SensorManager::request_action() {
 	}
 
 	mb_packet_s tmp_packet = {0};
-	mb_packet_request_read_holding_registers(&tmp_packet, this->current_slave_id, 0x0000, 0x0001);
+	mb_packet_request_read_holding_registers(
+		&tmp_packet,
+		current_slave_id,
+		SettingsManager::sttngs->low_sens_register[current_slave_id],
+		0x0001
+	);
 	mb_tx_packet_handler(&tmp_packet);
 
 	SensorManager::sens_status = SENS_WAIT;
@@ -103,6 +108,7 @@ void SensorManager::wait_response_action() {
 
 void SensorManager::success_response_action() {
 	this->update_modbus_slave_id();
+	this->error_count = 0;
 	this->current_action = &SensorManager::request_action;
 }
 
@@ -127,7 +133,7 @@ bool SensorManager::write_sensors_data() {
 	return RecordManager::save() == RecordManager::RECORD_OK;
 }
 
-void SensorManager::send_request(uint8_t *data,uint8_t Len) {
+void SensorManager::send_request(uint8_t *data, uint8_t Len) {
    HAL_UART_Transmit(&LOW_MB_UART, data, Len, MODBUS_REQ_TIMEOUT);
 }
 
@@ -154,6 +160,7 @@ void SensorManager::update_modbus_slave_id() {
 
 void SensorManager::registrate_modbus_error() {
 	SettingsManager::sttngs->low_sens_status[this->current_slave_id] = SENSOR_ERROR;
+	SettingsManager::save();
 }
 
 uint8_t* SensorManager::get_sensors_data() {

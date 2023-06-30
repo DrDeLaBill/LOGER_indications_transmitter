@@ -43,7 +43,6 @@ public:
 	static const char* RECORDS_FILENAME;
 
 	static record_sd_payload_t sd_record;
-	static record_sd_payload_t loaded_record;
 
     static record_status_t load(uint32_t record_id);
 	static record_status_t save();

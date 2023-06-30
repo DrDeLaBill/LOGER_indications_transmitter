@@ -19,10 +19,10 @@ SM::settings_sd_payload_t SM::sd_sttngs = {0};
 
 
 SM::SettingsManager() {
-	if (this->load() == SETTINGS_OK) {
-		return;
+	if (this->load() != SETTINGS_OK) {
+		this->reset();
 	}
-	this->reset();
+	SM::sttngs = &(SM::sd_sttngs.v1.payload_settings);
 }
 
 SM::settings_status_t SM::reset() {
@@ -30,12 +30,15 @@ SM::settings_status_t SM::reset() {
 	SM::sd_sttngs.v1.payload_settings.sens_transmit_period = DATA_TRNS_PERIOD_MS;
 	for (uint8_t i = 0x00; i < SensorManager::RESERVED_IDS_COUNT; i++) {
 		SM::sd_sttngs.v1.payload_settings.low_sens_status[i] = SensorManager::SENSOR_RESERVED;
+		SM::sd_sttngs.v1.payload_settings.low_sens_register[i] = 0x0000;
 	}
 	for (uint8_t i = SensorManager::RESERVED_IDS_COUNT; i < sizeof(SM::sd_sttngs.v1.payload_settings.low_sens_status); i++) {
 		SM::sd_sttngs.v1.payload_settings.low_sens_status[i] = SensorManager::SENSOR_FREE;
+		SM::sd_sttngs.v1.payload_settings.low_sens_register[i] = 0x0000;
 	}
 	// TODO: реалитзовать проверку наличия всех датчиков со 2 по 127
 	// SensorManager::check_sensors();
+
 	return this->save();
 }
 
@@ -72,7 +75,10 @@ SM::settings_status_t SM::load() {
 		return this->save();
 	}
 
-	SM::update_public_settings();
+	// TODO: добавлено для проверки, убрать!
+	SM::sd_sttngs.v1.payload_settings.low_sens_status[1] = SensorManager::SENSOR_TYPE_THERMAL;
+	SM::sd_sttngs.v1.payload_settings.low_sens_register[1] = 0x0000;
+
 	return SETTINGS_OK;
 }
 
@@ -99,11 +105,5 @@ SM::settings_status_t SM::save() {
 	}
 
 	LOG_DEBUG(MODULE_TAG, "settings saved\n");
-	SM::update_public_settings();
 	return SETTINGS_OK;
-}
-
-// TODO: переместить в конструктор, удалить функцию
-void SM::update_public_settings() {
-	SM::sttngs = &(SM::sd_sttngs.v1.payload_settings);
 }

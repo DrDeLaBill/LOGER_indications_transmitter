@@ -39,8 +39,6 @@ private:
 
 	static settings_sd_payload_t sd_sttngs;
 
-	static void update_public_settings();
-
 public:
 	typedef enum _settings_status_t {
 		SETTINGS_OK = 0,
