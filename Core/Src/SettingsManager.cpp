@@ -5,12 +5,8 @@
 
 #include "main.h"
 #include "SensorManager.h"
-// TODO: переместить extern в исходники .c
-extern "C"
-{
-	#include "internal_storage.h"
-	#include "utils.h"
-}
+#include "internal_storage.h"
+#include "utils.h"
 
 
 typedef SettingsManager SM;

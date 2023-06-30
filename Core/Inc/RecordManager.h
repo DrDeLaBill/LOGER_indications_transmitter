@@ -4,11 +4,8 @@
 
 #include <stdint.h>
 
-extern "C"
-{
-	#include "internal_storage.h"
-	#include "main.h"
-}
+#include "internal_storage.h"
+#include "main.h"
 
 
 class RecordManager {
@@ -19,7 +16,8 @@ private:
 public:
 	typedef enum _sensor_status_t {
 		RECORD_OK = 0,
-		RECORD_ERROR
+		RECORD_ERROR,
+		RECORD_EMPTY
 	} record_status_t;
 
 	// Record structure in storage
@@ -45,8 +43,9 @@ public:
 	static const char* RECORDS_FILENAME;
 
 	static record_sd_payload_t sd_record;
+	static record_sd_payload_t loaded_record;
 
-    static record_status_t load(); // TODO: продумать, что будет загружаться
+    static record_status_t load(uint32_t record_id);
 	static record_status_t save();
 	static void clear_buf();
 	static uint32_t get_new_record_id();

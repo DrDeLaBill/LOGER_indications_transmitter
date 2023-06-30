@@ -6,12 +6,9 @@
 #include "SettingsManager.h"
 #include "RecordManager.h"
 
-extern "C"
-{
-	#include "internal_storage.h"
-	#include "modbus/mb.h"
-	#include "modbus/mb-packet.h"
-}
+#include "internal_storage.h"
+#include "modbus/mb.h"
+#include "modbus/mb-packet.h"
 
 
 #define MODBUS_CHECK(condition, time) if (!Wait_Event(condition, time)) {return;}
@@ -31,6 +28,7 @@ uint8_t SensorManager::current_slave_id = RESERVED_IDS_COUNT;
 SensorManager::SensorManager() {
 	DeviceStateBase();
 	this->current_action = &SensorManager::start_action;
+	Util_TimerStart(&this->wait_record_timer, 0);
 
     mb_set_tx_handler(SensorManager::send_request);
     mb_set_master_process_handler(SensorManager::modbus_master_process);
@@ -55,19 +53,22 @@ void SensorManager::start_action() {
 	this->current_action = &SensorManager::request_action;
 }
 
-void SensorManager::wait_action() {
+void SensorManager::wait_record_action() {
 	this->current_action = &SensorManager::request_action;
 	if (Util_TimerPending(&this->wait_record_timer)) {
 		return;
 	}
-	this->write_sensors_data();
+	if (!this->write_sensors_data()) {
+		LOG_DEBUG(MODULE_TAG, " error write sensors data\n");
+		return;
+	}
 	Util_TimerStart(&this->wait_record_timer, SettingsManager::sttngs->sens_record_period);
 }
 
 void SensorManager::request_action() {
 	if (this->current_slave_id >= LOW_MB_SENS_COUNT) {
 		this->current_slave_id = RESERVED_IDS_COUNT;
-		this->current_action = &SensorManager::wait_action;
+		this->current_action = &SensorManager::wait_record_action;
 		return;
 	}
 
@@ -97,7 +98,7 @@ void SensorManager::wait_response_action() {
 		return;
 	}
     mb_rx_timeout_handler();
-	this->current_action = &SensorManager::wait_action;
+	this->current_action = &SensorManager::wait_record_action;
 }
 
 void SensorManager::success_response_action() {
@@ -120,11 +121,10 @@ void SensorManager::register_action() {}
 
 void SensorManager::sleep_action() {}
 
-void SensorManager::write_sensors_data() {
+bool SensorManager::write_sensors_data() {
 	RecordManager::sd_record.v1.payload_record.record_id = RecordManager::get_new_record_id();
 	RecordManager::sd_record.v1.payload_record.record_time = HAL_GetTick();
-	RecordManager::save();
-	RecordManager::clear_buf();
+	return RecordManager::save() == RecordManager::RECORD_OK;
 }
 
 void SensorManager::send_request(uint8_t *data,uint8_t Len) {

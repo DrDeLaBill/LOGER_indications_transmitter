@@ -8,6 +8,11 @@
 #ifndef INC_INTERNAL_STORAGE_H_
 #define INC_INTERNAL_STORAGE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include "stm32f4xx_hal.h"
 
 
@@ -39,5 +44,9 @@ FRESULT instor_find_file(const char* pattern);
 FRESULT instor_remove_file(const char* filename);
 FRESULT instor_get_free_clust(DWORD *fre_clust);
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_INTERNAL_STORAGE_H_ */

@@ -5,13 +5,9 @@
 #include <stdint.h>
 
 #include "DeviceStateBase.h"
-
-extern "C"
-{
-	#include "utils.h"
-	#include "internal_storage.h"
-	#include "modbus/mb-table.h"
-}
+#include "utils.h"
+#include "internal_storage.h"
+#include "modbus/mb-table.h"
 
 
 #define MODBUS_DATA_OFFSET 16
@@ -51,11 +47,11 @@ private:
     static void modbus_master_process(mb_packet_s* packet);
     void update_modbus_slave_id();
     void registrate_modbus_error();
-    void write_sensors_data();
+    bool write_sensors_data();
 
     // Sensors state actions
     void start_action();
-    void wait_action();
+    void wait_record_action();
     void request_action();
     void wait_response_action();
     void success_response_action();

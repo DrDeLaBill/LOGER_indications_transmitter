@@ -11,10 +11,7 @@
 
 #include <stdint.h>
 
-extern "C"
-{
-	#include "utils.h"
-}
+#include "utils.h"
 
 
 class CUPSlaveManager {
@@ -52,11 +49,11 @@ private:
 
 	uint8_t data_counter = 0;
 	uint8_t* device_data;
-	uint8_t  device_data_len = 0;
+	uint16_t  device_data_len = 0;
 	uint8_t* settings_data;
-	uint8_t  settings_data_len = 0;
+	uint16_t  settings_data_len = 0;
 	uint8_t* sensors_data;
-	uint8_t  sensors_data_len = 0;
+	uint16_t  sensors_data_len = 0;
 
 	void (CUPSlaveManager::*curr_status_action) (uint8_t msg);
 	void status_wait(uint8_t msg);
