@@ -16,7 +16,7 @@ class SettingsManager {
 
 public:
 	typedef struct __attribute__((packed)) _payload_settings_t  {
-		uint32_t sens_read_period;
+		uint32_t sens_record_period;
 		uint32_t sens_transmit_period;
 		uint8_t low_sens_status[LOW_MB_SENS_COUNT+1];
 	} payload_settings_t;

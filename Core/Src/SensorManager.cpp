@@ -31,10 +31,9 @@ uint8_t SensorManager::current_slave_id = RESERVED_IDS_COUNT;
 SensorManager::SensorManager() {
 	DeviceStateBase();
 	this->current_action = &SensorManager::start_action;
-	this->read_time = SettingsManager::sttngs->sens_read_period;
 
     mb_set_tx_handler(SensorManager::send_request);
-    mb_set_master_process_handler(SensorManager::master_process);
+    mb_set_master_process_handler(SensorManager::modbus_master_process);
 }
 
 void SensorManager::proccess() {
@@ -58,17 +57,17 @@ void SensorManager::start_action() {
 
 void SensorManager::wait_action() {
 	this->current_action = &SensorManager::request_action;
-	if (Util_TimerPending(&this->wait_timer)) {
+	if (Util_TimerPending(&this->wait_record_timer)) {
 		return;
 	}
 	this->write_sensors_data();
+	Util_TimerStart(&this->wait_record_timer, SettingsManager::sttngs->sens_record_period);
 }
 
 void SensorManager::request_action() {
 	if (this->current_slave_id >= LOW_MB_SENS_COUNT) {
 		this->current_slave_id = RESERVED_IDS_COUNT;
 		this->current_action = &SensorManager::wait_action;
-		Util_TimerStart(&this->wait_timer, this->read_time);
 		return;
 	}
 
@@ -81,7 +80,7 @@ void SensorManager::request_action() {
 	mb_tx_packet_handler(&tmp_packet);
 
 	SensorManager::sens_status = SENS_WAIT;
-	Util_TimerStart(&this->wait_timer, MODBUS_REQ_TIMEOUT);
+	Util_TimerStart(&this->wait_modbus_timer, MODBUS_REQ_TIMEOUT);
 	this->current_action = &SensorManager::wait_response_action;
 }
 
@@ -94,7 +93,7 @@ void SensorManager::wait_response_action() {
 		this->current_action = &SensorManager::error_response_action;
 		return;
 	}
-	if (Util_TimerPending(&this->wait_timer)) {
+	if (Util_TimerPending(&this->wait_modbus_timer)) {
 		return;
 	}
     mb_rx_timeout_handler();
@@ -132,12 +131,13 @@ void SensorManager::send_request(uint8_t *data,uint8_t Len) {
    HAL_UART_Transmit(&LOW_MB_UART, data, Len, MODBUS_REQ_TIMEOUT);
 }
 
-void SensorManager::master_process(mb_packet_s* packet) {
+void SensorManager::modbus_master_process(mb_packet_s* packet) {
     if(packet->type == MB_PACKET_TYPE_ERROR) {
     	SensorManager::sens_status = SENS_ERROR;
     	return;
     }
-	RecordManager::sd_record.v1.payload_record.sensors_values[SensorManager::current_slave_id] = packet->Data[0];
+	RecordManager::sd_record.v1.payload_record.sensors_values[current_slave_id] = packet->Data[0];
+	RecordManager::sd_record.v1.payload_record.sensors_statuses[current_slave_id] = SettingsManager::sttngs->low_sens_status[current_slave_id];
 	SensorManager::sens_status = SENS_SUCCESS;
 	LOG_DEBUG(SensorManager::MODULE_TAG, "[%02d] A:%d ", packet->device_address, packet->Data[0]);
 }

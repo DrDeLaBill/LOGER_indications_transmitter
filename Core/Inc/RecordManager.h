@@ -26,6 +26,7 @@ public:
 	typedef struct __attribute__((packed)) _payload_record_t {
 		uint32_t record_id;
 		uint32_t record_time;
+		uint8_t sensors_statuses[LOW_MB_SENS_COUNT+1];
 		int16_t sensors_values[LOW_MB_SENS_COUNT+1];
 	} payload_record_t;
 

@@ -43,12 +43,12 @@ private:
 
     // Modbus
 	static uint8_t current_slave_id;
-	uint32_t read_time;
-	dio_timer_t wait_timer;
+	dio_timer_t wait_record_timer;
+	dio_timer_t wait_modbus_timer;
 	uint8_t error_count;
 
     static void send_request(uint8_t* data,uint8_t Len);
-    static void master_process(mb_packet_s* packet);
+    static void modbus_master_process(mb_packet_s* packet);
     void update_modbus_slave_id();
     void registrate_modbus_error();
     void write_sensors_data();

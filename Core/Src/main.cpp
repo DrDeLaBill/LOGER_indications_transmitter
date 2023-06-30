@@ -50,9 +50,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-SettingsManager stngs_m;
-SensorManager sens_m;
-CUPSlaveManager CUP_manager;
+SettingsManager* stngs_m;
+SensorManager* sens_m;
+CUPSlaveManager* CUP_manager;
 
 uint8_t low_modbus_uart_val = 0;
 uint8_t CUP_uart_val = 0;
@@ -67,19 +67,19 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 void CUPSlaveManager::update_device_handler() {
-	stngs_m.device_info.device_type = SettingsManager::DEVICE_TYPE_LOGER;
-	stngs_m.device_info.device_version = DEVICE_VERSION;
-	stngs_m.device_info.id_base1 = *((uint16_t*)(UID_BASE));
-	stngs_m.device_info.id_base2 = *((uint16_t*)(UID_BASE + 0x02));
-	stngs_m.device_info.id_base3 = *((uint32_t*)(UID_BASE + 0x04));
-	stngs_m.device_info.id_base4 = *((uint32_t*)(UID_BASE + 0x08));
-	this->device_data = (uint8_t*)&(stngs_m.device_info);
+	stngs_m->device_info.device_type = SettingsManager::DEVICE_TYPE_LOGER;
+	stngs_m->device_info.device_version = DEVICE_VERSION;
+	stngs_m->device_info.id_base1 = *((uint16_t*)(UID_BASE));
+	stngs_m->device_info.id_base2 = *((uint16_t*)(UID_BASE + 0x02));
+	stngs_m->device_info.id_base3 = *((uint32_t*)(UID_BASE + 0x04));
+	stngs_m->device_info.id_base4 = *((uint32_t*)(UID_BASE + 0x08));
+	this->device_data = (uint8_t*)&(stngs_m->device_info);
 	this->device_data_len = sizeof(SettingsManager::device_info_t);
 }
 
 void CUPSlaveManager::update_sensors_handler() {
-	this->sensors_data = (uint8_t*)&(RecordManager::sd_record.v1.payload_record.sensors_values);
-	this->sensors_data_len = (uint8_t)sizeof(RecordManager::sd_record.v1.payload_record.sensors_values);
+	this->sensors_data = (uint8_t*)&(RecordManager::sd_record.v1.payload_record);
+	this->sensors_data_len = (uint8_t)sizeof(RecordManager::sd_record.v1.payload_record);
 }
 
 void CUPSlaveManager::update_settings_handler() {
@@ -98,7 +98,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		mb_rx_new_data((uint8_t)low_modbus_uart_val);
 		HAL_UART_Receive_IT(&LOW_MB_UART, (uint8_t*)&low_modbus_uart_val, 1);
 	} else if (huart == &CUP_UART) {
-		CUP_manager.char_data_handler(CUP_uart_val);
+		CUP_manager->char_data_handler(CUP_uart_val);
 		HAL_UART_Receive_IT(&CUP_UART, (uint8_t*)&CUP_uart_val, 1);
 		HAL_TIM_Base_Start(&CUP_TIM);
 		CUP_TIM.Instance->CNT &= 0x00;
@@ -108,7 +108,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim == &CUP_TIM) {
-		CUP_manager.timeout();
+		CUP_manager->timeout();
 		HAL_TIM_Base_Stop(&CUP_TIM);
 	}
 }
@@ -150,7 +150,9 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-
+  stngs_m = new SettingsManager();
+  sens_m = new SensorManager();
+  CUP_manager = new CUPSlaveManager();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -158,7 +160,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  sens_m.proccess();
+	  sens_m->proccess();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

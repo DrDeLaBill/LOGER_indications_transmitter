@@ -30,7 +30,7 @@ SM::SettingsManager() {
 }
 
 SM::settings_status_t SM::reset() {
-	SM::sd_sttngs.v1.payload_settings.sens_read_period = SENS_READ_PERIOD_MS;
+	SM::sd_sttngs.v1.payload_settings.sens_record_period = SENS_READ_PERIOD_MS;
 	SM::sd_sttngs.v1.payload_settings.sens_transmit_period = DATA_TRNS_PERIOD_MS;
 	for (uint8_t i = 0x00; i < SensorManager::RESERVED_IDS_COUNT; i++) {
 		SM::sd_sttngs.v1.payload_settings.low_sens_status[i] = SensorManager::SENSOR_RESERVED;
