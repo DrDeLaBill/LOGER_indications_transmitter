@@ -46,7 +46,6 @@ public:
 
     static record_status_t load(uint32_t record_id);
 	static record_status_t save();
-	static void clear_buf();
 	static uint32_t get_new_record_id();
 
 };

@@ -75,7 +75,8 @@ void SensorManager::request_action() {
 	if (this->current_slave_id < RESERVED_IDS_COUNT) {
 		this->current_slave_id = RESERVED_IDS_COUNT;
 	}
-
+	//TODO: для проверки
+	current_slave_id = 0x01;
 	mb_packet_s tmp_packet = {0};
 	mb_packet_request_read_holding_registers(
 		&tmp_packet,
@@ -142,7 +143,7 @@ void SensorManager::modbus_master_process(mb_packet_s* packet) {
     	SensorManager::sens_status = SENS_ERROR;
     	return;
     }
-	RecordManager::sd_record.v1.payload_record.sensors_values[current_slave_id] = packet->Data[0];
+	RecordManager::sd_record.v1.payload_record.sensors_values[current_slave_id] = (packet->Data[0] << 8) | packet->Data[1];
 	RecordManager::sd_record.v1.payload_record.sensors_statuses[current_slave_id] = SettingsManager::sttngs->low_sens_status[current_slave_id];
 	SensorManager::sens_status = SENS_SUCCESS;
 	LOG_DEBUG(SensorManager::MODULE_TAG, "[%02d] A:%d ", packet->device_address, packet->Data[0]);

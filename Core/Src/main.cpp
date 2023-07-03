@@ -27,6 +27,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+
 #include "SettingsManager.h"
 #include "SensorManager.h"
 #include "CUPSlaveManager.h"
@@ -52,7 +54,7 @@
 /* USER CODE BEGIN PV */
 SettingsManager* stngs_m;
 SensorManager* sens_m;
-CUPSlaveManager* CUP_manager;
+CUPSlaveManager* CUP_m;
 
 uint8_t low_modbus_uart_val = 0;
 uint8_t CUP_uart_val = 0;
@@ -91,6 +93,12 @@ void CUPSlaveManager::send_byte(uint8_t msg) {
 	HAL_UART_Transmit(&CUP_UART, &msg, 1, CUP_WAIT_TIMEOUT);
 }
 
+bool CUPSlaveManager::validate_settings_handler (uint8_t *data, uint8_t len) {
+	SettingsManager::payload_settings_t tmp_sttngs_buf = {0};
+	memcpy(&tmp_sttngs_buf, (uint8_t*)this->request.data, this->request.data_len);
+
+	return !tmp_sttngs_buf.low_sens_register || !tmp_sttngs_buf.low_sens_status;
+}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -98,17 +106,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		mb_rx_new_data((uint8_t)low_modbus_uart_val);
 		HAL_UART_Receive_IT(&LOW_MB_UART, (uint8_t*)&low_modbus_uart_val, 1);
 	} else if (huart == &CUP_UART) {
-		CUP_manager->char_data_handler(CUP_uart_val);
-		HAL_UART_Receive_IT(&CUP_UART, (uint8_t*)&CUP_uart_val, 1);
+		CUP_m->char_data_handler(CUP_uart_val);
 		HAL_TIM_Base_Start(&CUP_TIM);
+		// TODO: проверить необходимость строчки
 		CUP_TIM.Instance->CNT &= 0x00;
+		HAL_UART_Receive_IT(&CUP_UART, (uint8_t*)&CUP_uart_val, 1);
 	}
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim == &CUP_TIM) {
-		CUP_manager->timeout();
+		CUP_m->timeout();
 		HAL_TIM_Base_Stop(&CUP_TIM);
 	}
 }
@@ -152,7 +161,10 @@ int main(void)
   /* USER CODE BEGIN 2 */
   stngs_m = new SettingsManager();
   sens_m = new SensorManager();
-  CUP_manager = new CUPSlaveManager();
+  CUP_m = new CUPSlaveManager();
+
+  HAL_UART_Receive_IT(&LOW_MB_UART, (uint8_t*)&low_modbus_uart_val, 1);
+  HAL_UART_Receive_IT(&CUP_UART, (uint8_t*)&CUP_uart_val, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -161,6 +173,7 @@ int main(void)
   {
     /* USER CODE END WHILE */
 	  sens_m->proccess();
+//	  RecordManager::load(2);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -243,6 +256,7 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+	LOG_DEBUG("ASSERT", "Wrong parameters value: file %s on line %d\r\n", file, line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

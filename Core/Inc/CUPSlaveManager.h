@@ -2,7 +2,7 @@
  *
  * CUPSlaveManager
  * Custom UART Protocol manager - slave
- * Created for connection PC (or Main Device) with indictions_transmitter via UART
+ * Created for connection PC (or Main Device) with indictions_transmitter via UART or another interface
  *
  */
 #ifndef INC_CUPSLAVEMANAGER_H_
@@ -22,7 +22,7 @@ private:
 	typedef enum _CUP_command_typedef {
 		CUP_CMD_DEVICE = 0x01,
 		CUP_CMD_STTNGS,
-		CUP_CMD_SENSRS,
+		CUP_CMD_DATA,
 	} CUP_command;
 
 	typedef enum _CUP_error_typedef {
@@ -84,6 +84,8 @@ public:
 	void update_sensors_handler(void);
 	// Update settings data function, implemented outside the class
 	void update_settings_handler(void);
+
+	bool validate_settings_handler(uint8_t *data, uint8_t len);
 
 };
 

@@ -25,7 +25,7 @@ void CUPSlaveManager::send_response() {
 			this->response.data = this->device_data;
 			this->response.data_len = this->device_data_len;
 			break;
-		case CUP_CMD_SENSRS:
+		case CUP_CMD_DATA:
 			this->update_sensors_handler();
 			this->response.data = this->sensors_data;
 			this->response.data_len = this->sensors_data_len;
@@ -101,6 +101,10 @@ void CUPSlaveManager::save_request_data() {
 		return;
 	}
 
+	if (!this->validate_settings_handler(this->request.data, this->request.data_len)) {
+		return;
+	}
+
 	memcpy(ptr, (uint8_t*)this->request.data, this->request.data_len);
 	Debug_HexDump(MODULE_TAG, ptr, this->request.data_len);
 
@@ -111,8 +115,8 @@ void CUPSlaveManager::status_wait(uint8_t msg) {
 	this->request.command = (CUP_command)msg;
 	switch (msg) {
 		case CUP_CMD_DEVICE:
-		case CUP_CMD_SENSRS:
 		case CUP_CMD_STTNGS:
+		case CUP_CMD_DATA:
 			this->curr_status_action = &CUPSlaveManager::status_data_len;
 			break;
 		default:

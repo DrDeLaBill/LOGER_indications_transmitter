@@ -17,6 +17,7 @@ const char* RM::RECORDS_FILENAME = "records.bin";
 RM::record_sd_payload_t RM::sd_record = {0};
 
 
+// TODO: выключать прерывания uart6 во время чтения и обработки записи
 RM::record_status_t RM::load(uint32_t record_id) {
 	memset(&(sd_record), 0, sizeof(sd_record));
 
@@ -93,13 +94,7 @@ RM::record_status_t RM::save() {
 
 	LOG_DEBUG(MODULE_TAG, "settings record\n");
 
-	clear_buf();
-
 	return RECORD_OK;
-}
-
-void RM::clear_buf() {
-	memset(&RM::sd_record, 0, sizeof(RM::sd_record));
 }
 
 uint32_t RM::get_new_record_id()
