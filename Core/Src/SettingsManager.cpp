@@ -39,7 +39,7 @@ SM::settings_status_t SM::reset() {
 	// TODO: реалитзовать проверку наличия всех датчиков со 2 по 127
 	// SensorManager::check_sensors();
 
-	return this->save();
+	return SettingsManager::save();
 }
 
 SM::settings_status_t SM::load() {

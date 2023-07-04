@@ -15,7 +15,13 @@ const char* RM::MODULE_TAG = "RCRD";
 const char* RM::RECORDS_FILENAME = "records.bin";
 
 RM::record_sd_payload_t RM::sd_record = {0};
+RM::payload_record_t* RM::sens_record = NULL;
 
+
+RM::RecordManager() {
+	memset(&sd_record, 0, sizeof(sd_record));
+	sens_record = &(RM::sd_record.v1.payload_record);
+}
 
 // TODO: выключать прерывания uart6 во время чтения и обработки записи
 RM::record_status_t RM::load(uint32_t record_id) {

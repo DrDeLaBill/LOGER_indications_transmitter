@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "SettingsManager.h"
+#include "utils.h"
 
 
 const char* CUPSlaveManager::MODULE_TAG = "CUP";
@@ -10,50 +11,50 @@ const char* CUPSlaveManager::MODULE_TAG = "CUP";
 
 CUPSlaveManager::CUPSlaveManager() {
 	this->reset_data();
+
+	device_info.device_type = SettingsManager::DEVICE_TYPE_LOGER;
+	device_info.device_version = DEVICE_VERSION;
+	device_info.id_base1 = *((uint16_t*)(UID_BASE));
+	device_info.id_base2 = *((uint16_t*)(UID_BASE + 0x02));
+	device_info.id_base3 = *((uint32_t*)(UID_BASE + 0x04));
+	device_info.id_base4 = *((uint32_t*)(UID_BASE + 0x08));
 }
 
 void CUPSlaveManager::char_data_handler(uint8_t msg) {
+
 	(this->*curr_status_action)(msg);
 }
 
 void CUPSlaveManager::send_response() {
 	this->response.command = this->request.command;
 
-	switch (this->response.command) {
-		case CUP_CMD_DEVICE:
-			this->update_device_handler();
-			this->response.data = this->device_data;
-			this->response.data_len = this->device_data_len;
-			break;
-		case CUP_CMD_DATA:
-			this->update_sensors_handler();
-			this->response.data = this->sensors_data;
-			this->response.data_len = this->sensors_data_len;
-			break;
-		case CUP_CMD_STTNGS:
-			this->update_settings_handler();
-			this->response.data = this->settings_data;
-			this->response.data_len = this->settings_data_len;
-			break;
-		default:
-			break;
-	};
+	uint8_t response_buffer[SD_PAYLOAD_BITS_SIZE(STORAGE_SD_MAX_PAYLOAD_SIZE)] = {0};
+	uint16_t counter = 0;
 
-	uint16_t buffer_size = 3 + this->response.data_len;
-	uint8_t* response_buffer = new uint8_t[buffer_size];
-	response_buffer[0] = this->response.command;
-	response_buffer[1] = this->response.data_len;
-	for (uint8_t i = 0; i < this->response.data_len; i++) {
-		response_buffer[2 + i] = this->response.data[i];
+	counter += serialize(&response_buffer[counter], this->response.command);
+
+	this->response.data_len = get_data_len((CUP_command)this->response.command);
+	counter += serialize(&response_buffer[counter], this->response.data_len);
+
+	if (this->response.command == CUP_CMD_DEVICE) {
+		counter += serialize(&response_buffer[counter], device_info.device_type);
+		counter += serialize(&response_buffer[counter], device_info.device_version);
+		counter += serialize(&response_buffer[counter], device_info.id_base1);
+		counter += serialize(&response_buffer[counter], device_info.id_base2);
+		counter += serialize(&response_buffer[counter], device_info.id_base3);
+		counter += serialize(&response_buffer[counter], device_info.id_base4);
+	} else {
+		set_request_data_handler(&response_buffer[counter], (CUP_command)this->response.command);
 	}
-	this->response.crc8 = this->get_CRC8(response_buffer, buffer_size - 1);
-	response_buffer[buffer_size - 1] = this->response.crc8;
+	counter += this->response.data_len;
 
-	for (uint16_t i = 0; i < buffer_size; i++) {
+	uint8_t crc8 = this->get_CRC8(response_buffer, counter - 1);
+	this->response.crc8 = crc8;
+	counter += serialize(&response_buffer[counter], crc8);
+
+	for (uint16_t i = 0; i < counter; i++) {
 		this->send_byte(response_buffer[i]);
 	}
-
-	delete [] response_buffer;
 
 	this->reset_data();
 }
@@ -69,8 +70,7 @@ void CUPSlaveManager::timeout()
 void CUPSlaveManager::send_error(CUP_error error_type) {
 	this->request.command = (CUP_command)(0xFF ^ (uint8_t)this->request.command);
 	this->response.data_len = 1;
-	uint8_t data_buf[1] = {error_type};
-	this->response.data = (uint8_t*)data_buf;
+	this->response.data[0] = error_type;
 
 	this->response.crc8 = this->get_message_crc(&(this->response));
 
@@ -84,35 +84,21 @@ void CUPSlaveManager::reset_data() {
 	this->data_counter = 0;
 }
 
-void CUPSlaveManager::save_request_data() {
+void CUPSlaveManager::save_settings_data() {
 	if (this->request.command != CUP_CMD_STTNGS) {
 		return;
 	}
 
-	uint8_t* ptr = (uint8_t*)this->settings_data;
-
-	if (!ptr) {
-		LOG_DEBUG(MODULE_TAG, " ERROR - no data to save\n");
-		return;
-	}
-
-	if (this->request.data_len != sizeof(ptr)) {
-		LOG_DEBUG(MODULE_TAG, " ERROR - invalid request data\n");
-		return;
-	}
-
-	if (!this->validate_settings_handler(this->request.data, this->request.data_len)) {
-		return;
-	}
-
-	memcpy(ptr, (uint8_t*)this->request.data, this->request.data_len);
-	Debug_HexDump(MODULE_TAG, ptr, this->request.data_len);
+	load_settings_data_handler(this->request.data);
 
 	SettingsManager::save();
 }
 
 void CUPSlaveManager::status_wait(uint8_t msg) {
-	this->request.command = (CUP_command)msg;
+	if (!fill_param(&(this->request.command), msg)) {
+		return;
+	}
+
 	switch (msg) {
 		case CUP_CMD_DEVICE:
 		case CUP_CMD_STTNGS:
@@ -126,7 +112,10 @@ void CUPSlaveManager::status_wait(uint8_t msg) {
 }
 
 void CUPSlaveManager::status_data_len(uint8_t msg) {
-	this->request.data_len = msg;
+	if (!fill_param(&(this->request.data_len), msg)) {
+		return;
+	}
+
 	if (msg > 0) {
 		this->curr_status_action = &CUPSlaveManager::status_data;
 	} else {
@@ -135,11 +124,6 @@ void CUPSlaveManager::status_data_len(uint8_t msg) {
 }
 
 void CUPSlaveManager::status_data(uint8_t msg) {
-	if (!sizeof(this->request.data)) {
-		LOG_DEBUG(MODULE_TAG, " ERROR - CUP data buffer is NULL\n");
-		this->send_error(CUP_ERROR_DATA_DOES_NOT_EXIST);
-		return;
-	}
 	if (this->data_counter > sizeof(this->request.data)) {
 		LOG_DEBUG(MODULE_TAG, " ERROR - CUP buffer out of range\n");
 		this->send_error(CUP_ERROR_DATA_OVERLOAD);
@@ -155,7 +139,7 @@ void CUPSlaveManager::status_check_crc(uint8_t msg) {
 	this->request.crc8 = msg;
 
 	if (msg == this->get_message_crc(&(this->request))) {
-		this->save_request_data();
+		this->save_settings_data();
 		this->send_response();
 		this->reset_data();
 		return;
@@ -166,18 +150,10 @@ void CUPSlaveManager::status_check_crc(uint8_t msg) {
 
 uint8_t CUPSlaveManager::get_message_crc(CUP_message* message)
 {
-	uint8_t* crc_buffer = new uint8_t[2 + message->data_len];
-	crc_buffer[0] = message->command;
-	crc_buffer[1] = message->data_len;
-	for (uint8_t i = 0; i < message->data_len; i++) {
-		crc_buffer[2 + i] = message->data[i];
-	}
-	uint8_t crc = get_CRC8(crc_buffer, sizeof(crc_buffer));
-	delete [] crc_buffer;
-	return crc;
+	return get_CRC8((uint8_t*)&message, sizeof(message) - 1);
 }
 
-uint8_t CUPSlaveManager::get_CRC8(uint8_t* buffer, uint8_t size) {
+uint8_t CUPSlaveManager::get_CRC8(uint8_t* buffer, uint16_t size) {
   uint8_t crc = 0;
   for (uint8_t i = 0; i < size; i++) {
 	uint8_t data = buffer[i];
@@ -187,4 +163,11 @@ uint8_t CUPSlaveManager::get_CRC8(uint8_t* buffer, uint8_t size) {
 	}
   }
   return crc;
+}
+
+uint16_t CUPSlaveManager::get_data_len(CUP_command command) {
+	if (command == CUP_CMD_DEVICE) {
+		return sizeof(device_info_t);
+	}
+	return get_data_len_handler(command);
 }

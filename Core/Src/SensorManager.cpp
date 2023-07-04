@@ -129,8 +129,8 @@ void SensorManager::register_action() {}
 void SensorManager::sleep_action() {}
 
 bool SensorManager::write_sensors_data() {
-	RecordManager::sd_record.v1.payload_record.record_id = RecordManager::get_new_record_id();
-	RecordManager::sd_record.v1.payload_record.record_time = HAL_GetTick();
+	RecordManager::sens_record->record_id = RecordManager::get_new_record_id();
+	RecordManager::sens_record->record_time = HAL_GetTick();
 	return RecordManager::save() == RecordManager::RECORD_OK;
 }
 
@@ -143,8 +143,8 @@ void SensorManager::modbus_master_process(mb_packet_s* packet) {
     	SensorManager::sens_status = SENS_ERROR;
     	return;
     }
-	RecordManager::sd_record.v1.payload_record.sensors_values[current_slave_id] = (packet->Data[0] << 8) | packet->Data[1];
-	RecordManager::sd_record.v1.payload_record.sensors_statuses[current_slave_id] = SettingsManager::sttngs->low_sens_status[current_slave_id];
+	RecordManager::sens_record->sensors_values[current_slave_id] = (packet->Data[0] << 8) | packet->Data[1];
+	RecordManager::sens_record->sensors_statuses[current_slave_id] = SettingsManager::sttngs->low_sens_status[current_slave_id];
 	SensorManager::sens_status = SENS_SUCCESS;
 	LOG_DEBUG(SensorManager::MODULE_TAG, "[%02d] A:%d ", packet->device_address, packet->Data[0]);
 }
@@ -162,8 +162,4 @@ void SensorManager::update_modbus_slave_id() {
 void SensorManager::registrate_modbus_error() {
 	SettingsManager::sttngs->low_sens_status[this->current_slave_id] = SENSOR_ERROR;
 	SettingsManager::save();
-}
-
-uint8_t* SensorManager::get_sensors_data() {
-	return (uint8_t*)RecordManager::sd_record.v1.payload_record.sensors_values;
 }

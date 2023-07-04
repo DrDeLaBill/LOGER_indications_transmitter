@@ -81,6 +81,8 @@ extern SPI_HandleTypeDef  hspi3;
 extern UART_HandleTypeDef huart6;
 #define LOW_MB_UART       huart6
 #define LOW_MB_SENS_COUNT 127
+
+#define LOW_MB_ARR_SIZE   LOW_MB_SENS_COUNT + 1
 // CUP slave
 extern UART_HandleTypeDef huart2;
 extern TIM_HandleTypeDef  htim1;

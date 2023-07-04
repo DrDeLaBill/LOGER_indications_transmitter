@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "DeviceStateBase.h"
+#include "RecordManager.h"
 #include "utils.h"
 #include "internal_storage.h"
 #include "modbus/mb-table.h"
@@ -31,8 +32,6 @@ public:
 	void proccess();
 	void sleep();
 	void awake();
-
-	uint8_t* get_sensors_data();
 
 private:
 	static const char* MODULE_TAG;

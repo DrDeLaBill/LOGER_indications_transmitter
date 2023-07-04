@@ -30,9 +30,9 @@
 #include <string.h>
 
 #include "SettingsManager.h"
+#include "RecordManager.h"
 #include "SensorManager.h"
 #include "CUPSlaveManager.h"
-#include "RecordManager.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,6 +55,7 @@
 SettingsManager* stngs_m;
 SensorManager* sens_m;
 CUPSlaveManager* CUP_m;
+RecordManager* rcrd_m;
 
 uint8_t low_modbus_uart_val = 0;
 uint8_t CUP_uart_val = 0;
@@ -68,25 +69,69 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void CUPSlaveManager::update_device_handler() {
-	stngs_m->device_info.device_type = SettingsManager::DEVICE_TYPE_LOGER;
-	stngs_m->device_info.device_version = DEVICE_VERSION;
-	stngs_m->device_info.id_base1 = *((uint16_t*)(UID_BASE));
-	stngs_m->device_info.id_base2 = *((uint16_t*)(UID_BASE + 0x02));
-	stngs_m->device_info.id_base3 = *((uint32_t*)(UID_BASE + 0x04));
-	stngs_m->device_info.id_base4 = *((uint32_t*)(UID_BASE + 0x08));
-	this->device_data = (uint8_t*)&(stngs_m->device_info);
-	this->device_data_len = sizeof(SettingsManager::device_info_t);
+uint16_t CUPSlaveManager::get_data_len_handler(CUP_command command) {
+	switch (command) {
+		case CUP_CMD_STTNGS:
+			return sizeof(SettingsManager::payload_settings_t);
+		case CUP_CMD_DATA:
+			return sizeof(RecordManager::payload_record_t);
+		default:
+			return 0;
+	}
 }
 
-void CUPSlaveManager::update_sensors_handler() {
-	this->sensors_data = (uint8_t*)&(RecordManager::sd_record.v1.payload_record);
-	this->sensors_data_len = (uint8_t)sizeof(RecordManager::sd_record.v1.payload_record);
+void CUPSlaveManager::set_request_data_handler(uint8_t* buffer, CUP_command command) {
+	uint16_t counter = 0;
+	switch (command) {
+	case CUP_CMD_STTNGS:
+		counter += serialize(&buffer[counter], SettingsManager::sttngs->sens_record_period);
+		counter += serialize(&buffer[counter], SettingsManager::sttngs->sens_transmit_period);
+		for (uint16_t i = 0; i < sizeof(SettingsManager::sttngs->low_sens_status); i++) {
+			counter += serialize(&buffer[counter], SettingsManager::sttngs->low_sens_status[i]);
+		}
+		for (uint16_t i = 0; i < sizeof(SettingsManager::sttngs->low_sens_register); i++) {
+			counter += serialize(&buffer[counter], SettingsManager::sttngs->low_sens_register[i]);
+		}
+		break;
+	case CUP_CMD_DATA:
+		counter += serialize(&buffer[counter], RecordManager::sens_record->record_id);
+		counter += serialize(&buffer[counter], RecordManager::sens_record->record_time);
+		for (uint16_t i = 0; i < sizeof(RecordManager::sens_record->sensors_statuses); i++) {
+			counter += serialize(&buffer[counter], RecordManager::sens_record->sensors_statuses[i]);
+		}
+		for (uint16_t i = 0; i < sizeof(RecordManager::sens_record->sensors_values); i++) {
+			counter += serialize(&buffer[counter], RecordManager::sens_record->sensors_values[i]);
+		}
+		break;
+	default:
+		this->send_error(CUP_ERROR_COMMAND);
+		break;
+	}
 }
 
-void CUPSlaveManager::update_settings_handler() {
-	this->settings_data = (uint8_t*)SettingsManager::sttngs;
-	this->settings_data_len = sizeof(SettingsManager::payload_settings_t);
+void CUPSlaveManager::load_settings_data_handler(uint8_t* buffer) {
+	uint16_t counter = 0;
+	if (SettingsManager::sttngs == NULL) {
+		LOG_DEBUG(MODULE_TAG, " error update settings\n");
+		return;
+	}
+
+	counter += deserialize(&buffer[counter], &(SettingsManager::sttngs->sens_record_period));
+	counter += deserialize(&buffer[counter], &(SettingsManager::sttngs->sens_transmit_period));
+	for (uint16_t i = 0; i < sizeof(SettingsManager::sttngs->low_sens_status); i++) {
+		counter += deserialize(&buffer[counter], &(SettingsManager::sttngs->low_sens_status[i]));
+	}
+	for (uint16_t i = 0; i < sizeof(SettingsManager::sttngs->low_sens_register); i++) {
+		counter += deserialize(&buffer[counter], &(SettingsManager::sttngs->low_sens_register[i]));
+	}
+	Debug_HexDump(MODULE_TAG, (uint8_t*)&(SettingsManager::sttngs), sizeof(SettingsManager::payload_settings_t));
+
+	if (SettingsManager::sttngs->low_sens_register && SettingsManager::sttngs->low_sens_status) {
+		return;
+	}
+
+	LOG_DEBUG(MODULE_TAG, " unavailable settings, do reset\n");
+	SettingsManager::reset();
 }
 
 void CUPSlaveManager::send_byte(uint8_t msg) {
@@ -160,6 +205,7 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   stngs_m = new SettingsManager();
+  rcrd_m = new RecordManager();
   sens_m = new SensorManager();
   CUP_m = new CUPSlaveManager();
 

@@ -9,7 +9,6 @@ void Util_TimerStart(dio_timer_t* tm, uint32_t waitMs) {
 	tm->delay = waitMs;
 }
 
-
 uint8_t Util_TimerPending(dio_timer_t* tm) {
 	return (HAL_GetTick() - tm->start) < tm->delay;
 }
