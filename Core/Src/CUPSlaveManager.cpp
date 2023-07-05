@@ -46,15 +46,13 @@ void CUPSlaveManager::send_response() {
 	} else {
 		set_request_data_handler(&response_buffer[counter], (CUP_command)this->response.command);
 	}
-	counter += this->response.data_len;
 
-	uint8_t crc8 = this->get_CRC8(response_buffer, counter - 1);
+	uint8_t crc8 = this->get_CRC8(response_buffer, counter);
 	this->response.crc8 = crc8;
+
 	counter += serialize(&response_buffer[counter], crc8);
 
-	for (uint16_t i = 0; i < counter; i++) {
-		this->send_byte(response_buffer[i]);
-	}
+	this->send_buffer(response_buffer, counter);
 
 	this->reset_data();
 }
@@ -64,17 +62,30 @@ void CUPSlaveManager::timeout()
   if (this->curr_status_action == &CUPSlaveManager::status_wait) {
     return;
   }
-	this->send_error(CUP_ERROR_TIMEOUT);
+  this->send_error(CUP_ERROR_TIMEOUT);
 }
 
 void CUPSlaveManager::send_error(CUP_error error_type) {
-	this->request.command = (CUP_command)(0xFF ^ (uint8_t)this->request.command);
+	this->response.command = (CUP_command)(0xFF ^ (uint8_t)this->request.command);
 	this->response.data_len = 1;
 	this->response.data[0] = error_type;
 
 	this->response.crc8 = this->get_message_crc(&(this->response));
 
-	this->send_response();
+	uint16_t size = sizeof(this->response.command) + sizeof(this->response.data_len) + sizeof(this->response.data[0]) + sizeof(this->response.crc8);
+	uint8_t* error_buffer = new uint8_t[size];
+
+	uint16_t counter = 0;
+	counter += serialize(&error_buffer[counter], this->response.command);
+	counter += serialize(&error_buffer[counter], this->response.data_len);
+	counter += serialize(&error_buffer[counter], this->response.data[0]);
+	counter += serialize(&error_buffer[counter], this->response.crc8);
+
+	this->send_buffer(error_buffer, counter);
+
+	delete[] error_buffer;
+
+	this->reset_data();
 }
 
 void CUPSlaveManager::reset_data() {
@@ -150,7 +161,8 @@ void CUPSlaveManager::status_check_crc(uint8_t msg) {
 
 uint8_t CUPSlaveManager::get_message_crc(CUP_message* message)
 {
-	return get_CRC8((uint8_t*)&message, sizeof(message) - 1);
+	uint16_t size = sizeof(message->command) + sizeof(message->data_len) + message->data_len;
+	return get_CRC8((uint8_t*)message, size);
 }
 
 uint8_t CUPSlaveManager::get_CRC8(uint8_t* buffer, uint16_t size) {
@@ -170,4 +182,10 @@ uint16_t CUPSlaveManager::get_data_len(CUP_command command) {
 		return sizeof(device_info_t);
 	}
 	return get_data_len_handler(command);
+}
+
+void CUPSlaveManager::send_buffer(uint8_t* buffer, uint16_t len) {
+	for (uint16_t i = 0; i < len; i++) {
+		this->send_byte(buffer[i]);
+	}
 }

@@ -44,7 +44,7 @@ public:
 	} CUP_message;
 
 private:
-	const uint8_t CUP_WAIT_TIMEOUT = 100;
+	const uint8_t CUP_WAIT_TIMEOUT = 50;
 
 	uint8_t data_counter = 0;
 
@@ -56,7 +56,7 @@ private:
 		*param += (msg & 0xFF);
 		this->data_counter++;
 
-		if (this->data_counter < sizeof(param)) {
+		if (this->data_counter < sizeof(*param)) {
 			return false;
 		}
 
@@ -72,6 +72,7 @@ private:
 
 	void send_response();
 	void send_error(CUP_error error_type);
+	void send_buffer(uint8_t* buffer, uint16_t len);
 	void reset_data();
 	void save_settings_data();
 	uint8_t get_message_crc(CUP_message* message);
