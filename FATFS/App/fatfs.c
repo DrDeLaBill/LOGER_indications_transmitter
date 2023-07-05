@@ -37,7 +37,7 @@ void MX_FATFS_Init(void)
   retUSER = FATFS_LinkDriver(&USER_Driver, USERPath);
 
   /* USER CODE BEGIN Init */
-  retDIOSPI = FATFS_LinkDriver(&DIO_SPI_Driver, DIOSPIPath);
+  /* additional user code for init */
   /* USER CODE END Init */
 }
 

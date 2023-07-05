@@ -57,36 +57,40 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define MODBUS1_TX_Pin GPIO_PIN_6
-#define MODBUS1_TX_GPIO_Port GPIOC
-#define MODBUS1_RX_Pin GPIO_PIN_12
-#define MODBUS1_RX_GPIO_Port GPIOA
-#define SPI3_SD_NSS_Pin GPIO_PIN_2
-#define SPI3_SD_NSS_GPIO_Port GPIOD
-#define DATA_TX_Pin GPIO_PIN_6
-#define DATA_TX_GPIO_Port GPIOB
-#define DATA_RX_Pin GPIO_PIN_7
-#define DATA_RX_GPIO_Port GPIOB
+#define LOW_MB_TX_Pin GPIO_PIN_0
+#define LOW_MB_TX_GPIO_Port GPIOA
+#define LOW_MB_RX_Pin GPIO_PIN_1
+#define LOW_MB_RX_GPIO_Port GPIOA
+#define SD_NSS_Pin GPIO_PIN_4
+#define SD_NSS_GPIO_Port GPIOA
+#define FAST_MB_TX_Pin GPIO_PIN_8
+#define FAST_MB_TX_GPIO_Port GPIOD
+#define FAST_MB_RX_Pin GPIO_PIN_9
+#define FAST_MB_RX_GPIO_Port GPIOD
+#define CUP_TX_Pin GPIO_PIN_6
+#define CUP_TX_GPIO_Port GPIOC
+#define CUP_RX_Pin GPIO_PIN_7
+#define CUP_RX_GPIO_Port GPIOC
 /* USER CODE BEGIN Private defines */
 // General settings
 #define DEVICE_VERSION      0x01
 #define SENS_READ_PERIOD_MS 60000
 #define DATA_TRNS_PERIOD_MS 86400000
 // SD card
-extern SPI_HandleTypeDef  hspi3;
-#define SD_HSPI           hspi3
-#define SD_CS_GPIO_Port   SPI3_SD_NSS_GPIO_Port
-#define SD_CS_Pin         SPI3_SD_NSS_Pin
+extern SPI_HandleTypeDef  hspi1;
+#define SD_HSPI           hspi1
+#define SD_CS_GPIO_Port   SD_NSS_GPIO_Port
+#define SD_CS_Pin         SD_NSS_Pin
 // MODBUS
-extern UART_HandleTypeDef huart6;
-#define LOW_MB_UART       huart6
+extern UART_HandleTypeDef huart4;
+#define LOW_MB_UART       huart4
 #define LOW_MB_SENS_COUNT 127
 
 #define LOW_MB_ARR_SIZE   LOW_MB_SENS_COUNT + 1
 // CUP slave
-extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart6;
 extern TIM_HandleTypeDef  htim1;
-#define CUP_UART          huart2
+#define CUP_UART          huart6
 #define CUP_TIM			  htim1
 /* USER CODE END Private defines */
 
