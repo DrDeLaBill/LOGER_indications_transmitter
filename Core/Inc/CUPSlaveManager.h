@@ -52,9 +52,8 @@ private:
 
 	template <typename T>
 	bool fill_param(T* param, uint8_t msg) {
-		*param <<= 8;
-		*param += (msg & 0xFF);
-		this->data_counter++;
+		T delta = (T)msg << (8 * this->data_counter++);
+ 		*param += delta;
 
 		if (this->data_counter < sizeof(*param)) {
 			return false;
@@ -74,17 +73,16 @@ private:
 	void send_error(CUP_error error_type);
 	void send_buffer(uint8_t* buffer, uint16_t len);
 	void reset_data();
-	void save_settings_data();
-	uint8_t get_message_crc(CUP_message* message);
+	void load_request_data();
+	uint16_t load_message_to_buffer(uint8_t* buffer);
+	uint8_t get_message_crc();
 	uint8_t get_CRC8(uint8_t* buffer, uint16_t size);
 
-	uint16_t get_data_len(CUP_command command);
-	uint16_t get_data_len_handler(CUP_command command);
-	void set_request_data_handler(uint8_t* buffer, CUP_command command);
-	void load_settings_data_handler(uint8_t* buffer);
+	void load_data_to_buffer_handler(uint8_t* buffer);
+	void load_settings_data_handler();
 
 public:
-	struct device_info_t {
+	struct __attribute__((packed)) device_info_t {
 		uint8_t device_type;
 		uint8_t device_version;
 		uint32_t id_base1;
@@ -93,16 +91,13 @@ public:
 		uint32_t id_base4;
 	} device_info;
 
-	CUP_message request;
-	CUP_message response;
+	CUP_message message;
 
 	CUPSlaveManager();
 
 	void char_data_handler(uint8_t msg);
 	void send_byte(uint8_t msg);
 	void timeout();
-
-	bool validate_settings_handler(uint8_t *data, uint8_t len);
 
 	template <typename T>
 	static uint16_t deserialize(uint8_t* buffer, T* variable) {

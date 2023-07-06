@@ -67,10 +67,6 @@ void Error_Handler(void);
 #define FAST_MB_TX_GPIO_Port GPIOD
 #define FAST_MB_RX_Pin GPIO_PIN_9
 #define FAST_MB_RX_GPIO_Port GPIOD
-#define CUP_TX_Pin GPIO_PIN_6
-#define CUP_TX_GPIO_Port GPIOC
-#define CUP_RX_Pin GPIO_PIN_7
-#define CUP_RX_GPIO_Port GPIOC
 /* USER CODE BEGIN Private defines */
 // General settings
 #define DEVICE_VERSION      0x01
