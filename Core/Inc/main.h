@@ -57,16 +57,14 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define LOW_MB_TX_Pin GPIO_PIN_0
-#define LOW_MB_TX_GPIO_Port GPIOA
-#define LOW_MB_RX_Pin GPIO_PIN_1
-#define LOW_MB_RX_GPIO_Port GPIOA
 #define SD_NSS_Pin GPIO_PIN_4
 #define SD_NSS_GPIO_Port GPIOA
 #define FAST_MB_TX_Pin GPIO_PIN_8
 #define FAST_MB_TX_GPIO_Port GPIOD
 #define FAST_MB_RX_Pin GPIO_PIN_9
 #define FAST_MB_RX_GPIO_Port GPIOD
+#define BEDUG_LED_Pin GPIO_PIN_11
+#define BEDUG_LED_GPIO_Port GPIOA
 /* USER CODE BEGIN Private defines */
 // General settings
 #define DEVICE_VERSION      0x01
@@ -80,6 +78,7 @@ extern SPI_HandleTypeDef  hspi1;
 // MODBUS
 extern UART_HandleTypeDef huart4;
 #define LOW_MB_UART       huart4
+#define LOW_MB_UART_INSTC huart4.Instance
 #define LOW_MB_SENS_COUNT 127
 
 #define LOW_MB_ARR_SIZE   LOW_MB_SENS_COUNT + 1
@@ -87,7 +86,9 @@ extern UART_HandleTypeDef huart4;
 extern UART_HandleTypeDef huart6;
 extern TIM_HandleTypeDef  htim1;
 #define CUP_UART          huart6
+#define CUP_UART_INSTANCE huart6.Instance
 #define CUP_TIM			  htim1
+#define CUP_TIM_INSTANCE  htim1.Instance
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

@@ -12,6 +12,7 @@
 
 
 #define MODBUS_DATA_OFFSET 16
+#define MODBUS_SIZE_MAX    10
 
 
 class SensorManager: public DeviceStateBase {
@@ -41,6 +42,9 @@ private:
 	dio_timer_t wait_record_timer;
 	dio_timer_t wait_modbus_timer;
 	uint8_t error_count;
+
+	static uint8_t mb_send_data_buffer[MODBUS_SIZE_MAX];
+	static uint8_t mb_send_data_length;
 
     static void send_request(uint8_t* data,uint8_t Len);
     static void modbus_master_process(mb_packet_s* packet);

@@ -68,66 +68,68 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void CUPSlaveManager::load_data_to_buffer_handler(uint8_t* buffer) {
+uint16_t CUPSlaveManager::load_data_to_buffer_handler(uint8_t* buffer) {
 	uint16_t counter = 0;
 	switch (this->message.command) {
 	case CUP_CMD_STTNGS:
 		this->message.data_len = sizeof(SettingsManager::payload_settings_t);
 		counter += serialize(&buffer[counter], this->message.data_len);
 
-		counter += serialize(&buffer[counter], SettingsManager::sttngs->sens_record_period);
-		counter += serialize(&buffer[counter], SettingsManager::sttngs->sens_transmit_period);
-		for (uint16_t i = 0; i < sizeof(SettingsManager::sttngs->low_sens_status); i++) {
-			counter += serialize(&buffer[counter], SettingsManager::sttngs->low_sens_status[i]);
+		counter += serialize(&buffer[counter], SettingsManager::sd_sttngs.v1.payload_settings.sens_record_period);
+		counter += serialize(&buffer[counter], SettingsManager::sd_sttngs.v1.payload_settings.sens_transmit_period);
+		for (uint16_t i = 0; i < (sizeof(SettingsManager::sd_sttngs.v1.payload_settings.low_sens_status) / sizeof(*SettingsManager::sd_sttngs.v1.payload_settings.low_sens_status)); i++) {
+			counter += serialize(&buffer[counter], SettingsManager::sd_sttngs.v1.payload_settings.low_sens_status[i]);
 		}
-		for (uint16_t i = 0; i < sizeof(SettingsManager::sttngs->low_sens_register); i++) {
-			counter += serialize(&buffer[counter], SettingsManager::sttngs->low_sens_register[i]);
+		for (uint16_t i = 0; i < (sizeof(SettingsManager::sd_sttngs.v1.payload_settings.low_sens_register) / sizeof(*SettingsManager::sd_sttngs.v1.payload_settings.low_sens_register)); i++) {
+			counter += serialize(&buffer[counter], SettingsManager::sd_sttngs.v1.payload_settings.low_sens_register[i]);
 		}
 		break;
 	case CUP_CMD_DATA:
+		if (RecordManager::sens_record == NULL) {
+			return 0;
+		}
+
 		this->message.data_len = sizeof(RecordManager::payload_record_t);
 		counter += serialize(&buffer[counter], this->message.data_len);
 
 		counter += serialize(&buffer[counter], RecordManager::sens_record->record_id);
 		counter += serialize(&buffer[counter], RecordManager::sens_record->record_time);
-		for (uint16_t i = 0; i < sizeof(RecordManager::sens_record->sensors_statuses); i++) {
+		for (uint16_t i = 0; i < (sizeof(RecordManager::sens_record->sensors_statuses) / sizeof(*RecordManager::sens_record->sensors_statuses)); i++) {
 			counter += serialize(&buffer[counter], RecordManager::sens_record->sensors_statuses[i]);
 		}
-		for (uint16_t i = 0; i < sizeof(RecordManager::sens_record->sensors_values); i++) {
+		for (uint16_t i = 0; i < (sizeof(RecordManager::sens_record->sensors_values) / sizeof(*RecordManager::sens_record->sensors_values)); i++) {
 			counter += serialize(&buffer[counter], RecordManager::sens_record->sensors_values[i]);
 		}
 		break;
 	default:
-		this->send_error(CUP_ERROR_COMMAND);
 		break;
 	}
+	return counter;
 }
 
 void CUPSlaveManager::load_settings_data_handler() {
 	uint8_t* buffer = this->message.data;
 	uint16_t counter = 0;
 
-	if (SettingsManager::sttngs == NULL) {
-		LOG_DEBUG(MODULE_TAG, " error update settings\n");
+	SettingsManager::payload_settings_t tmpBuf = {0};
+	counter += deserialize(&buffer[counter], &(tmpBuf.sens_record_period));
+	counter += deserialize(&buffer[counter], &(tmpBuf.sens_transmit_period));
+	for (uint16_t i = 0; i < sizeof(tmpBuf.low_sens_status); i++) {
+		counter += deserialize(&buffer[counter], &(tmpBuf.low_sens_status[i]));
+	}
+	for (uint16_t i = 0; i < sizeof(tmpBuf.low_sens_register); i++) {
+		counter += deserialize(&buffer[counter], &(tmpBuf.low_sens_register[i]));
+	}
+
+	if (!tmpBuf.sens_record_period || !tmpBuf.sens_transmit_period) {
+		LOG_DEBUG(MODULE_TAG, " unavailable settings\n");
 		return;
 	}
 
-	counter += deserialize(&buffer[counter], &(SettingsManager::sttngs->sens_record_period));
-	counter += deserialize(&buffer[counter], &(SettingsManager::sttngs->sens_transmit_period));
-	for (uint16_t i = 0; i < sizeof(SettingsManager::sttngs->low_sens_status); i++) {
-		counter += deserialize(&buffer[counter], &(SettingsManager::sttngs->low_sens_status[i]));
-	}
-	for (uint16_t i = 0; i < sizeof(SettingsManager::sttngs->low_sens_register); i++) {
-		counter += deserialize(&buffer[counter], &(SettingsManager::sttngs->low_sens_register[i]));
-	}
-	Debug_HexDump(MODULE_TAG, (uint8_t*)&(SettingsManager::sttngs), sizeof(SettingsManager::payload_settings_t));
-
-	if (SettingsManager::sttngs->low_sens_register && SettingsManager::sttngs->low_sens_status) {
-		return;
-	}
-
-	LOG_DEBUG(MODULE_TAG, " unavailable settings, do reset\n");
-	SettingsManager::reset();
+	LOG_DEBUG(MODULE_TAG, " save new settings\n");
+	memcpy((uint8_t*)&(SettingsManager::sd_sttngs.v1.payload_settings), (uint8_t*)&tmpBuf, sizeof(SettingsManager::payload_settings_t));
+	Debug_HexDump(MODULE_TAG, (uint8_t*)&(tmpBuf), sizeof(SettingsManager::payload_settings_t));
+	SettingsManager::save();
 }
 
 void CUPSlaveManager::send_byte(uint8_t msg) {
@@ -136,13 +138,13 @@ void CUPSlaveManager::send_byte(uint8_t msg) {
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	if (huart == &LOW_MB_UART) {
+	if (huart->Instance == LOW_MB_UART_INSTC) {
 		mb_rx_new_data((uint8_t)low_modbus_uart_val);
 		HAL_UART_Receive_IT(&LOW_MB_UART, (uint8_t*)&low_modbus_uart_val, 1);
-	} else if (huart == &CUP_UART) {
+	} else if (huart->Instance == CUP_UART_INSTANCE) {
 		CUP_m->char_data_handler(CUP_uart_val);
-		// TODO: проверить необходимость строчки
-		CUP_TIM.Instance->CNT &= 0x00;
+		CUP_TIM.Instance->CNT = 0x00;
+		__HAL_TIM_CLEAR_FLAG(&CUP_TIM, TIM_SR_UIF);
 		HAL_TIM_Base_Start_IT(&CUP_TIM);
 		HAL_UART_Receive_IT(&CUP_UART, (uint8_t*)&CUP_uart_val, 1);
 	}
@@ -150,9 +152,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	if(htim == &CUP_TIM) {
+	if(htim->Instance == CUP_TIM_INSTANCE) {
 		CUP_m->timeout();
-		HAL_TIM_Base_Stop(&CUP_TIM);
+		CUP_TIM.Instance->CNT = 0x00;
+		__HAL_TIM_CLEAR_FLAG(&CUP_TIM, TIM_SR_UIF);
+		HAL_TIM_Base_Stop_IT(&CUP_TIM);
 	}
 }
 /* USER CODE END 0 */
@@ -187,17 +191,16 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_TIM1_Init();
-  MX_UART4_Init();
-  MX_USART1_UART_Init();
-  MX_USART3_UART_Init();
   MX_USART6_UART_Init();
   MX_FATFS_Init();
+  MX_UART4_Init();
   /* USER CODE BEGIN 2 */
   stngs_m = new SettingsManager();
   rcrd_m = new RecordManager();
   sens_m = new SensorManager();
   CUP_m = new CUPSlaveManager();
 
+  HAL_GPIO_WritePin(BEDUG_LED_GPIO_Port, BEDUG_LED_Pin, GPIO_PIN_RESET);
   HAL_UART_Receive_IT(&LOW_MB_UART, (uint8_t*)&low_modbus_uart_val, 1);
   HAL_UART_Receive_IT(&CUP_UART, (uint8_t*)&CUP_uart_val, 1);
   /* USER CODE END 2 */
@@ -205,8 +208,10 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  printf("Fuck you\n");
   while (1)
   {
+    CUP_m->proccess();
 	sens_m->proccess();
 //	RecordManager::load(2);
     /* USER CODE END WHILE */
@@ -238,31 +243,37 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 168;
+  RCC_OscInitStruct.PLL.PLLN = 64;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    Error_Handler();
+	Error_Handler();
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+							  |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
-    Error_Handler();
+	Error_Handler();
   }
 }
 
 /* USER CODE BEGIN 4 */
-
+int _write(int file, uint8_t *ptr, int len) {
+//	HAL_UART_Transmit(&CMD_UART, (uint8_t *) ptr, len, DEFAULT_UART_DELAY);
+	for (int DataIdx = 0; DataIdx < len; DataIdx++) {
+		ITM_SendChar(*ptr++);
+	}
+	return len;
+}
 /* USER CODE END 4 */
 
 /**

@@ -20,13 +20,24 @@ CUPSlaveManager::CUPSlaveManager() {
 	device_info.id_base4 = *((uint32_t*)(UID_BASE + 0x08));
 }
 
-void CUPSlaveManager::char_data_handler(uint8_t msg) {
+void CUPSlaveManager::proccess() {
+	if (this->response_state == CUP_RESPONSE_SUCCESS) {
+		this->load_request_data();
+		this->send_success_response();
+		this->reset_data();
+	} else if (this->response_state == CUP_RESPONSE_ERROR) {
+		this->send_error_response();
+		this->reset_data();
+	}
+}
 
+void CUPSlaveManager::char_data_handler(uint8_t msg) {
 	(this->*curr_status_action)(msg);
 }
 
-void CUPSlaveManager::send_response() {
-	uint8_t* response_buffer = new uint8_t[sizeof(CUP_message)] {0};
+void CUPSlaveManager::send_success_response() {
+	HAL_GPIO_WritePin(BEDUG_LED_GPIO_Port, BEDUG_LED_Pin, GPIO_PIN_SET);
+	uint8_t response_buffer[MESSAGE_BUFFER_SIZE] = {0};
 
 	uint16_t size = this->load_message_to_buffer(response_buffer);
 	uint8_t crc8 = this->get_CRC8(response_buffer, size);
@@ -36,8 +47,27 @@ void CUPSlaveManager::send_response() {
 	this->send_buffer(response_buffer, size);
 
 	this->reset_data();
+	HAL_GPIO_WritePin(BEDUG_LED_GPIO_Port, BEDUG_LED_Pin, GPIO_PIN_RESET);
+}
 
-	delete[] response_buffer;
+void CUPSlaveManager::send_error_response() {
+	this->message.command = (CUP_command)(0xFF ^ (uint8_t)this->message.command);
+	this->message.data_len = 1;
+	this->message.data[0] = this->cup_error_type;
+
+	this->message.crc8 = this->get_message_crc();
+
+	uint8_t error_buffer[MESSAGE_BUFFER_SIZE] = {0};
+
+	uint16_t counter = 0;
+	counter += serialize(&error_buffer[counter], this->message.command);
+	counter += serialize(&error_buffer[counter], this->message.data_len);
+	counter += serialize(&error_buffer[counter], this->message.data[0]);
+	counter += serialize(&error_buffer[counter], this->message.crc8);
+
+	this->send_buffer(error_buffer, counter);
+
+	this->reset_data();
 }
 
 uint16_t CUPSlaveManager::load_message_to_buffer(uint8_t* buffer) {
@@ -56,7 +86,7 @@ uint16_t CUPSlaveManager::load_message_to_buffer(uint8_t* buffer) {
 		counter += serialize(&buffer[counter], device_info.id_base3);
 		counter += serialize(&buffer[counter], device_info.id_base4);
 	} else {
-		load_data_to_buffer_handler(&buffer[counter]);
+		counter += this->load_data_to_buffer_handler(&buffer[counter]);
 	}
 
 	return counter;
@@ -68,44 +98,35 @@ void CUPSlaveManager::load_request_data() {
 	}
 
 	load_settings_data_handler();
-
-	SettingsManager::save();
 }
 
 void CUPSlaveManager::timeout()
 {
-  if (this->curr_status_action == &CUPSlaveManager::status_wait) {
-    return;
+  if (this->data_counter > 0) {
+	  this->set_response_state_error(CUP_ERROR_TIMEOUT);
   }
-  this->send_error(CUP_ERROR_TIMEOUT);
-}
-
-void CUPSlaveManager::send_error(CUP_error error_type) {
-	this->message.command = (CUP_command)(0xFF ^ (uint8_t)this->message.command);
-	this->message.data_len = 1;
-	this->message.data[0] = error_type;
-
-	this->message.crc8 = this->get_message_crc();
-
-	uint16_t size = sizeof(this->message.command) + sizeof(this->message.data_len) + sizeof(this->message.data[0]) + sizeof(this->message.crc8);
-	uint8_t* error_buffer = new uint8_t[size];
-
-	uint16_t counter = 0;
-	counter += serialize(&error_buffer[counter], this->message.command);
-	counter += serialize(&error_buffer[counter], this->message.data_len);
-	counter += serialize(&error_buffer[counter], this->message.data[0]);
-	counter += serialize(&error_buffer[counter], this->message.crc8);
-
-	this->send_buffer(error_buffer, counter);
-
-	delete[] error_buffer;
-
-	this->reset_data();
 }
 
 void CUPSlaveManager::reset_data() {
 	memset(&this->message, 0, sizeof(this->message));
-	this->curr_status_action = &CUPSlaveManager::status_wait;
+	this->set_new_status(&CUPSlaveManager::status_wait);
+	this->response_state = CUP_RESPONSE_WAIT;
+	this->cup_error_type = CUP_NO_ERROR;
+}
+
+void CUPSlaveManager::set_response_state_error(CUP_error error_type) {
+	this->cup_error_type = error_type;
+	this->response_state = CUP_RESPONSE_ERROR;
+	this->set_new_status(&CUPSlaveManager::status_request_error);
+}
+
+void CUPSlaveManager::set_response_state_success() {
+	this->response_state = CUP_RESPONSE_SUCCESS;
+	this->cup_error_type = CUP_NO_ERROR;
+}
+
+void CUPSlaveManager::set_new_status(void (CUPSlaveManager::*status_action) (uint8_t)) {
+	this->curr_status_action = status_action;
 	this->data_counter = 0;
 }
 
@@ -118,10 +139,10 @@ void CUPSlaveManager::status_wait(uint8_t msg) {
 		case CUP_CMD_DEVICE:
 		case CUP_CMD_STTNGS:
 		case CUP_CMD_DATA:
-			this->curr_status_action = &CUPSlaveManager::status_data_len;
+			this->set_new_status(&CUPSlaveManager::status_data_len);
 			break;
 		default:
-			this->send_error(CUP_ERROR_COMMAND);
+			this->set_response_state_error(CUP_ERROR_COMMAND);
 			break;
 	};
 }
@@ -131,23 +152,33 @@ void CUPSlaveManager::status_data_len(uint8_t msg) {
 		return;
 	}
 
+	if (this->message.data_len > sizeof(this->message.data)) {
+		this->set_response_state_error(CUP_ERROR_DATA_LEN);
+		return;
+	}
+
 	if (this->message.data_len > 0) {
-		this->curr_status_action = &CUPSlaveManager::status_data;
+		this->set_new_status(&CUPSlaveManager::status_data);
 	} else {
-		this->curr_status_action = &CUPSlaveManager::status_check_crc;
+		this->set_new_status(&CUPSlaveManager::status_check_crc);
 	}
 }
 
 void CUPSlaveManager::status_data(uint8_t msg) {
 	if (this->data_counter > sizeof(this->message.data)) {
 		LOG_DEBUG(MODULE_TAG, " ERROR - CUP buffer out of range\n");
-		this->send_error(CUP_ERROR_DATA_OVERLOAD);
+		this->set_response_state_error(CUP_ERROR_DATA_OVERLOAD);
 		return;
 	}
+
 	this->message.data[this->data_counter++] = msg;
-	if (this->data_counter >= this->message.data_len) {
-		this->data_counter = 0;
-		this->curr_status_action = &CUPSlaveManager::status_check_crc;
+
+	if (this->data_counter > this->message.data_len) {
+		this->set_response_state_error(CUP_ERROR_DATA_OVERLOAD);
+	}
+
+	if (this->data_counter == this->message.data_len) {
+		this->set_new_status(&CUPSlaveManager::status_check_crc);
 	}
 }
 
@@ -157,18 +188,29 @@ void CUPSlaveManager::status_check_crc(uint8_t msg) {
 	}
 
 	if (msg == this->get_message_crc()) {
-		this->load_request_data();
-		this->send_response();
-		this->reset_data();
-		return;
+		this->set_response_state_success();
+		this->set_new_status(&CUPSlaveManager::status_request_success);
+	} else {
+		this->set_response_state_error(CUP_ERROR_CRC);
 	}
+}
 
-	this->send_error(CUP_ERROR_CRC);
+void CUPSlaveManager::status_request_success(uint8_t msg) {
+	if (this->cup_error_type != CUP_NO_ERROR) {
+		this->reset_data();
+	}
+}
+
+void CUPSlaveManager::status_request_error(uint8_t msg) {
+	if (this->cup_error_type == CUP_NO_ERROR) {
+		LOG_DEBUG(MODULE_TAG, " unknown error => reset\n");
+		this->reset_data();
+	}
 }
 
 uint8_t CUPSlaveManager::get_message_crc()
 {
-	uint8_t* buffer = new uint8_t[sizeof(CUP_command)] {0};
+	uint8_t buffer[MESSAGE_BUFFER_SIZE] = {0};
 
 	uint16_t count = 0;
 	count += serialize(&buffer[count], this->message.command);
@@ -179,16 +221,14 @@ uint8_t CUPSlaveManager::get_message_crc()
 
 	uint8_t crc = get_CRC8(buffer, count);
 
-	delete[] buffer;
-
 	return crc;
 }
 
 uint8_t CUPSlaveManager::get_CRC8(uint8_t* buffer, uint16_t size) {
   uint8_t crc = 0;
-  for (uint8_t i = 0; i < size; i++) {
+  for (uint16_t i = 0; i < size; i++) {
 	uint8_t data = buffer[i];
-	for (int j = 8; j > 0; j--) {
+	for (uint16_t j = 8; j > 0; j--) {
 	  crc = ((crc ^ data) & 1) ? (crc >> 1) ^ 0x8C : (crc >> 1);
 	  data >>= 1;
 	}

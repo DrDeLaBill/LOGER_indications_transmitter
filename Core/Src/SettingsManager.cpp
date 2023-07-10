@@ -14,7 +14,6 @@ typedef SettingsManager SM;
 
 const char* SM::MODULE_TAG = "STTNGS";
 const char* SM::SETTINGS_FILENAME = "settings.bin";
-SM::payload_settings_t* SM::sttngs = NULL;
 SM::settings_sd_payload_t SM::sd_sttngs = {0};
 
 
@@ -22,7 +21,6 @@ SM::SettingsManager() {
 	if (this->load() != SETTINGS_OK) {
 		this->reset();
 	}
-	SM::sttngs = &(SM::sd_sttngs.v1.payload_settings);
 }
 
 SM::settings_status_t SM::reset() {

@@ -14,6 +14,11 @@
 
 class SettingsManager {
 
+private:
+	static const char* MODULE_TAG;
+
+	static const char* SETTINGS_FILENAME;
+
 public:
 	typedef struct __attribute__((packed)) _payload_settings_t  {
 		uint32_t sens_record_period;
@@ -22,7 +27,6 @@ public:
 		uint16_t low_sens_register[LOW_MB_ARR_SIZE];
 	} payload_settings_t;
 
-private:
 	typedef union _settings_sd_payload_t {
 		struct __attribute__((packed)) {
 			struct _sd_payload_header_t header;
@@ -35,14 +39,6 @@ private:
 		} v1;
 	} settings_sd_payload_t;
 
-
-	static const char* MODULE_TAG;
-
-	static const char* SETTINGS_FILENAME;
-
-	static settings_sd_payload_t sd_sttngs;
-
-public:
 	typedef enum _settings_status_t {
 		SETTINGS_OK = 0,
 		SETTINGS_ERROR
@@ -54,7 +50,7 @@ public:
 		DEVICE_TYPE_MAIN
 	} device_type_t;
 
-	static payload_settings_t* sttngs;
+	static settings_sd_payload_t sd_sttngs;
 
 	SettingsManager();
 	settings_status_t load();

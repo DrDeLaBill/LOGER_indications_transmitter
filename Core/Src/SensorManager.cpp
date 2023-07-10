@@ -1,6 +1,7 @@
 #include "SensorManager.h"
 
 #include <fatfs.h>
+#include <string.h>
 
 #include "DeviceStateBase.h"
 #include "SettingsManager.h"
@@ -23,6 +24,8 @@
 const char* SensorManager::MODULE_TAG = "SENS";
 SensorManager::sensor_read_status SensorManager::sens_status = SENS_WAIT;
 uint8_t SensorManager::current_slave_id = RESERVED_IDS_COUNT;
+uint8_t SensorManager::mb_send_data_buffer[MODBUS_SIZE_MAX] = {0};
+uint8_t SensorManager::mb_send_data_length = 0;
 
 
 SensorManager::SensorManager() {
@@ -36,6 +39,11 @@ SensorManager::SensorManager() {
 
 void SensorManager::proccess() {
 	(this->*current_action)();
+
+	if (mb_send_data_length) {
+		HAL_UART_Transmit(&LOW_MB_UART, mb_send_data_buffer, mb_send_data_length, MODBUS_REQ_TIMEOUT);
+		mb_send_data_length = 0;
+	}
 }
 
 void SensorManager::sleep() {
@@ -62,7 +70,7 @@ void SensorManager::wait_record_action() {
 		LOG_DEBUG(MODULE_TAG, " error write sensors data\n");
 		return;
 	}
-	Util_TimerStart(&this->wait_record_timer, SettingsManager::sttngs->sens_record_period);
+	Util_TimerStart(&this->wait_record_timer, SettingsManager::sd_sttngs.v1.payload_settings.sens_record_period);
 }
 
 void SensorManager::request_action() {
@@ -81,7 +89,7 @@ void SensorManager::request_action() {
 	mb_packet_request_read_holding_registers(
 		&tmp_packet,
 		current_slave_id,
-		SettingsManager::sttngs->low_sens_register[current_slave_id],
+		SettingsManager::sd_sttngs.v1.payload_settings.low_sens_register[current_slave_id],
 		0x0001
 	);
 	mb_tx_packet_handler(&tmp_packet);
@@ -134,8 +142,14 @@ bool SensorManager::write_sensors_data() {
 	return RecordManager::save() == RecordManager::RECORD_OK;
 }
 
-void SensorManager::send_request(uint8_t *data, uint8_t Len) {
-   HAL_UART_Transmit(&LOW_MB_UART, data, Len, MODBUS_REQ_TIMEOUT);
+void SensorManager::send_request(uint8_t *data, uint8_t len) {
+	if (len > sizeof(mb_send_data_buffer)) {
+		LOG_DEBUG(MODULE_TAG, " modbus buffer out of range\n");
+		return;
+	}
+	mb_send_data_length = len;
+	memset(mb_send_data_buffer, 0, sizeof(mb_send_data_buffer));
+	memcpy(mb_send_data_buffer, data, len);
 }
 
 void SensorManager::modbus_master_process(mb_packet_s* packet) {
@@ -144,7 +158,7 @@ void SensorManager::modbus_master_process(mb_packet_s* packet) {
     	return;
     }
 	RecordManager::sens_record->sensors_values[current_slave_id] = (packet->Data[0] << 8) | packet->Data[1];
-	RecordManager::sens_record->sensors_statuses[current_slave_id] = SettingsManager::sttngs->low_sens_status[current_slave_id];
+	RecordManager::sens_record->sensors_statuses[current_slave_id] = SettingsManager::sd_sttngs.v1.payload_settings.low_sens_status[current_slave_id];
 	SensorManager::sens_status = SENS_SUCCESS;
 	LOG_DEBUG(SensorManager::MODULE_TAG, "[%02d] A:%d ", packet->device_address, packet->Data[0]);
 }
@@ -153,13 +167,13 @@ void SensorManager::modbus_master_process(mb_packet_s* packet) {
 void SensorManager::update_modbus_slave_id() {
 	do {
 		this->current_slave_id++;
-		if (SettingsManager::sttngs->low_sens_status[current_slave_id] >= SENSOR_TYPE_THERMAL) {
+		if (SettingsManager::sd_sttngs.v1.payload_settings.low_sens_status[current_slave_id] >= SENSOR_TYPE_THERMAL) {
 			return;
 		}
-	} while (this->current_slave_id < sizeof(SettingsManager::sttngs->low_sens_status));
+	} while (this->current_slave_id < sizeof(SettingsManager::sd_sttngs.v1.payload_settings.low_sens_status));
 }
 
 void SensorManager::registrate_modbus_error() {
-	SettingsManager::sttngs->low_sens_status[this->current_slave_id] = SENSOR_ERROR;
+	SettingsManager::sd_sttngs.v1.payload_settings.low_sens_status[this->current_slave_id] = SENSOR_ERROR;
 	SettingsManager::save();
 }
