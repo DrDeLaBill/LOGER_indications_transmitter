@@ -122,7 +122,7 @@ public:
 
 	template <typename T>
 	static uint16_t deserialize(uint8_t* buffer, T* variable) {
-		for (uint8_t* ptr = buffer + sizeof(*variable); ptr > buffer; ptr--) {
+		for (uint8_t* ptr = buffer + sizeof(*variable) - 1; ptr >= buffer; ptr--) {
 			*variable <<= 8;
 			*variable += *ptr;
 		}

@@ -114,10 +114,10 @@ void CUPSlaveManager::load_settings_data_handler() {
 	SettingsManager::payload_settings_t tmpBuf = {0};
 	counter += deserialize(&buffer[counter], &(tmpBuf.sens_record_period));
 	counter += deserialize(&buffer[counter], &(tmpBuf.sens_transmit_period));
-	for (uint16_t i = 0; i < sizeof(tmpBuf.low_sens_status); i++) {
+	for (uint16_t i = 0; i < (sizeof(tmpBuf.low_sens_status) / sizeof(*tmpBuf.low_sens_status)); i++) {
 		counter += deserialize(&buffer[counter], &(tmpBuf.low_sens_status[i]));
 	}
-	for (uint16_t i = 0; i < sizeof(tmpBuf.low_sens_register); i++) {
+	for (uint16_t i = 0; i < (sizeof(tmpBuf.low_sens_register) / sizeof(tmpBuf.low_sens_register)); i++) {
 		counter += deserialize(&buffer[counter], &(tmpBuf.low_sens_register[i]));
 	}
 
