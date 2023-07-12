@@ -49,25 +49,25 @@ SM::settings_status_t SM::load() {
 	FRESULT res = intstor_read_file(filename, &(SM::sd_sttngs), sizeof(SM::sd_sttngs), &br);
 	if(res != FR_OK) {
 		settings_load_ok = false;
-		LOG_DEBUG(MODULE_TAG, "read_file(%s) error=%i\n", filename, res);
+		LOG_BEDUG(MODULE_TAG, "read_file(%s) error=%i\n", filename, res);
 	}
 
 	if(SM::sd_sttngs.header.magic != STORAGE_SD_PAYLOAD_MAGIC) {
 		settings_load_ok = false;
-		LOG_DEBUG(MODULE_TAG, "bad settings magic %08lX!=%08lX\n", SM::sd_sttngs.header.magic, STORAGE_SD_PAYLOAD_MAGIC);
+		LOG_BEDUG(MODULE_TAG, "bad settings magic %08lX!=%08lX\n", SM::sd_sttngs.header.magic, STORAGE_SD_PAYLOAD_MAGIC);
 	}
 
 	if(SM::sd_sttngs.header.version != STORAGE_SD_PAYLOAD_VERSION) {
 		settings_load_ok = false;
-		LOG_DEBUG(MODULE_TAG, "bad settings version %i!=%i\n", SM::sd_sttngs.header.version, STORAGE_SD_PAYLOAD_VERSION);
+		LOG_BEDUG(MODULE_TAG, "bad settings version %i!=%i\n", SM::sd_sttngs.header.version, STORAGE_SD_PAYLOAD_VERSION);
 	}
 
 	if(!settings_load_ok) {
-		LOG_DEBUG(MODULE_TAG, "settings not loaded, using defaults\n");
+		LOG_BEDUG(MODULE_TAG, "settings not loaded, using defaults\n");
 		this->reset();
 	}
 
-	LOG_DEBUG(MODULE_TAG, "applying settings\n");
+	LOG_BEDUG(MODULE_TAG, "applying settings\n");
 
 	if(!settings_load_ok) {
 		return this->save();
@@ -89,7 +89,7 @@ SM::settings_status_t SM::save() {
 		DIO_SPI_CardCRC16(&crc, SM::sd_sttngs.bits[i]);
 	SM::sd_sttngs.crc = crc;
 
-	LOG_DEBUG(SM::MODULE_TAG, "saving settings\n");
+	LOG_BEDUG(SM::MODULE_TAG, "saving settings\n");
 	Debug_HexDump(MODULE_TAG, (uint8_t*)&(SM::sd_sttngs), sizeof(SM::sd_sttngs));
 
 	char filename[64];
@@ -98,10 +98,10 @@ SM::settings_status_t SM::save() {
 	UINT br;
 	FRESULT res = intstor_write_file(filename, &(SM::sd_sttngs), sizeof(SM::sd_sttngs), &br);
 	if(res != FR_OK) {
-		LOG_DEBUG(MODULE_TAG, "settings NOT saved\n");
+		LOG_BEDUG(MODULE_TAG, "settings NOT saved\n");
 		return SETTINGS_ERROR;
 	}
 
-	LOG_DEBUG(MODULE_TAG, "settings saved\n");
+	LOG_BEDUG(MODULE_TAG, "settings saved\n");
 	return SETTINGS_OK;
 }

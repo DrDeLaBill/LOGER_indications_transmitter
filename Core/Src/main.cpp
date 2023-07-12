@@ -27,6 +27,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+#include <stdio.h>
 
 #include "SettingsManager.h"
 #include "RecordManager.h"
@@ -122,11 +123,11 @@ void CUPSlaveManager::load_settings_data_handler() {
 	}
 
 	if (!tmpBuf.sens_record_period || !tmpBuf.sens_transmit_period) {
-		LOG_DEBUG(MODULE_TAG, " unavailable settings\n");
+		LOG_BEDUG(MODULE_TAG, " unavailable settings\n");
 		return;
 	}
 
-	LOG_DEBUG(MODULE_TAG, " save new settings\n");
+	LOG_BEDUG(MODULE_TAG, " save new settings\n");
 	memcpy((uint8_t*)&(SettingsManager::sd_sttngs.v1.payload_settings), (uint8_t*)&tmpBuf, sizeof(SettingsManager::payload_settings_t));
 	Debug_HexDump(MODULE_TAG, (uint8_t*)&(tmpBuf), sizeof(SettingsManager::payload_settings_t));
 	SettingsManager::save();
@@ -208,7 +209,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  printf("Fuck you\n");
+  printf("Hello world\n");
   while (1)
   {
     CUP_m->proccess();
@@ -267,6 +268,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+#ifdef DEBUG
 int _write(int file, uint8_t *ptr, int len) {
 //	HAL_UART_Transmit(&CMD_UART, (uint8_t *) ptr, len, DEFAULT_UART_DELAY);
 	for (int DataIdx = 0; DataIdx < len; DataIdx++) {
@@ -274,6 +276,7 @@ int _write(int file, uint8_t *ptr, int len) {
 	}
 	return len;
 }
+#endif
 /* USER CODE END 4 */
 
 /**

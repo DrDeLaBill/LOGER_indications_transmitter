@@ -67,7 +67,7 @@ void SensorManager::wait_record_action() {
 		return;
 	}
 	if (!this->write_sensors_data()) {
-		LOG_DEBUG(MODULE_TAG, " error write sensors data\n");
+		LOG_BEDUG(MODULE_TAG, " error write sensors data\n");
 		return;
 	}
 	Util_TimerStart(&this->wait_record_timer, SettingsManager::sd_sttngs.v1.payload_settings.sens_record_period);
@@ -112,7 +112,7 @@ void SensorManager::wait_response_action() {
 		return;
 	}
     mb_rx_timeout_handler();
-	this->current_action = &SensorManager::wait_record_action;
+	this->current_action = &SensorManager::error_response_action;
 }
 
 void SensorManager::success_response_action() {
@@ -144,7 +144,7 @@ bool SensorManager::write_sensors_data() {
 
 void SensorManager::send_request(uint8_t *data, uint8_t len) {
 	if (len > sizeof(mb_send_data_buffer)) {
-		LOG_DEBUG(MODULE_TAG, " modbus buffer out of range\n");
+		LOG_BEDUG(MODULE_TAG, " modbus buffer out of range\n");
 		return;
 	}
 	mb_send_data_length = len;
@@ -160,7 +160,7 @@ void SensorManager::modbus_master_process(mb_packet_s* packet) {
 	RecordManager::sens_record->sensors_values[current_slave_id] = (packet->Data[0] << 8) | packet->Data[1];
 	RecordManager::sens_record->sensors_statuses[current_slave_id] = SettingsManager::sd_sttngs.v1.payload_settings.low_sens_status[current_slave_id];
 	SensorManager::sens_status = SENS_SUCCESS;
-	LOG_DEBUG(SensorManager::MODULE_TAG, "[%02d] A:%d ", packet->device_address, packet->Data[0]);
+	LOG_BEDUG(SensorManager::MODULE_TAG, "[%02d] A:%d ", packet->device_address, packet->Data[0]);
 }
 
 

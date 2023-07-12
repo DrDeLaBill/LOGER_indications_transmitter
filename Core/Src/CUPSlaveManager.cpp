@@ -166,7 +166,7 @@ void CUPSlaveManager::status_data_len(uint8_t msg) {
 
 void CUPSlaveManager::status_data(uint8_t msg) {
 	if (this->data_counter > sizeof(this->message.data)) {
-		LOG_DEBUG(MODULE_TAG, " ERROR - CUP buffer out of range\n");
+		LOG_BEDUG(MODULE_TAG, " ERROR - CUP buffer out of range\n");
 		this->set_response_state_error(CUP_ERROR_DATA_OVERLOAD);
 		return;
 	}
@@ -203,7 +203,7 @@ void CUPSlaveManager::status_request_success(uint8_t msg) {
 
 void CUPSlaveManager::status_request_error(uint8_t msg) {
 	if (this->cup_error_type == CUP_NO_ERROR) {
-		LOG_DEBUG(MODULE_TAG, " unknown error => reset\n");
+		LOG_BEDUG(MODULE_TAG, " unknown error => reset\n");
 		this->reset_data();
 	}
 }

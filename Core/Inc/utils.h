@@ -31,14 +31,14 @@ extern "C" {
 
 
 #ifdef DEBUG
-#define LOG_DEBUG(MODULE_TAG, format, ...) { \
+#define LOG_BEDUG(MODULE_TAG, format, ...) { \
 	printf("%s:", MODULE_TAG); printf(format __VA_OPT__(,) __VA_ARGS__); \
 }
 #define LOG_DEBUG_LN(format, ...) { \
 	printf(format __VA_OPT__(,) __VA_ARGS__);   \
 }
 #else /* DEBUG */
-#define LOG_DEBUG(MODULE_TAG, format, ...) {}
+#define LOG_BEDUG(MODULE_TAG, format, ...) {}
 #define LOG_DEBUG_LN(format, ...) {}
 #endif /* DEBUG */
 

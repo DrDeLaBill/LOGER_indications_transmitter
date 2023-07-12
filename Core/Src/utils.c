@@ -36,11 +36,11 @@ void Debug_HexDump(const char* tag, const uint8_t* buf, uint16_t len) {
 			for(uint8_t i = 0; i < __min(ncols, len); i ++) will_print |= buf[i];
 			if(will_print) {
 				if(not_first_line) LOG_DEBUG_LN("\n");
-				LOG_DEBUG(tag, "[%04X] ", pos);
+				LOG_BEDUG(tag, "[%04X] ", pos);
 
 			} else if(was_printed) {
 				if(not_first_line) LOG_DEBUG_LN("\n");
-				LOG_DEBUG(tag, "[%04X] ...", pos);
+				LOG_BEDUG(tag, "[%04X] ...", pos);
 
 				was_printed = 0;
 			}
