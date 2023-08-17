@@ -57,8 +57,14 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define SD_NSS_Pin GPIO_PIN_4
-#define SD_NSS_GPIO_Port GPIOA
+#define FLASH_SPI_CS_Pin GPIO_PIN_4
+#define FLASH_SPI_CS_GPIO_Port GPIOA
+#define FLASH_SPI_CLK_Pin GPIO_PIN_5
+#define FLASH_SPI_CLK_GPIO_Port GPIOA
+#define FLASH_SPI_MISO_Pin GPIO_PIN_6
+#define FLASH_SPI_MISO_GPIO_Port GPIOA
+#define FALSH_SPI_MOSI_Pin GPIO_PIN_7
+#define FALSH_SPI_MOSI_GPIO_Port GPIOA
 #define FAST_MB_TX_Pin GPIO_PIN_8
 #define FAST_MB_TX_GPIO_Port GPIOD
 #define FAST_MB_RX_Pin GPIO_PIN_9
@@ -83,10 +89,10 @@ extern UART_HandleTypeDef huart4;
 
 #define LOW_MB_ARR_SIZE   LOW_MB_SENS_COUNT + 1
 // CUP slave
-extern UART_HandleTypeDef huart6;
+extern UART_HandleTypeDef huart1;
 extern TIM_HandleTypeDef  htim1;
-#define CUP_UART          huart6
-#define CUP_UART_INSTANCE huart6.Instance
+#define CUP_UART          huart1
+#define CUP_UART_INSTANCE huart1.Instance
 #define CUP_TIM			  htim1
 #define CUP_TIM_INSTANCE  htim1.Instance
 /* USER CODE END Private defines */

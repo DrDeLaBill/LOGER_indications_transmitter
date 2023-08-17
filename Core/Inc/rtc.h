@@ -1,8 +1,9 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file   fatfs.h
-  * @brief  Header for fatfs applications
+  * @file    rtc.h
+  * @brief   This file contains all the function prototypes for
+  *          the rtc.c file
   ******************************************************************************
   * @attention
   *
@@ -17,37 +18,35 @@
   */
 /* USER CODE END Header */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __fatfs_H
-#define __fatfs_H
+#ifndef __RTC_H__
+#define __RTC_H__
+
 #ifdef __cplusplus
- extern "C" {
+extern "C" {
 #endif
 
-#include "ff.h"
-#include "ff_gen_drv.h"
-#include "user_diskio.h" /* defines USER_Driver as external */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
 
 /* USER CODE BEGIN Includes */
-#include "user_diskio_spi.h"
+
 /* USER CODE END Includes */
 
-extern uint8_t retUSER; /* Return value for USER */
-extern char USERPath[4]; /* USER logical drive path */
-extern FATFS USERFatFS; /* File system object for USER logical drive */
-extern FIL USERFile; /* File object for USER */
+extern RTC_HandleTypeDef hrtc;
 
-void MX_FATFS_Init(void);
+/* USER CODE BEGIN Private defines */
+
+/* USER CODE END Private defines */
+
+void MX_RTC_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
-extern uint8_t retDIOSPI;
-extern char DIOSPIPath[4];
-extern FATFS DIOSPIFatFS;
-extern FIL DIOSPIFile;
-extern FILINFO DIOSPIFileInfo;
-
 /* USER CODE END Prototypes */
+
 #ifdef __cplusplus
 }
 #endif
-#endif /*__fatfs_H */
+
+#endif /* __RTC_H__ */
+

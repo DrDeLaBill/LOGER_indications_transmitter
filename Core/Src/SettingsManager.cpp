@@ -28,11 +28,13 @@ SM::settings_status_t SM::reset() {
 	SM::sd_sttngs.v1.payload_settings.sens_transmit_period = DATA_TRNS_PERIOD_MS;
 	for (uint8_t i = 0x00; i < SensorManager::RESERVED_IDS_COUNT; i++) {
 		SM::sd_sttngs.v1.payload_settings.low_sens_status[i] = SensorManager::SENSOR_RESERVED;
-		SM::sd_sttngs.v1.payload_settings.low_sens_register[i] = 0x0000;
+		SM::sd_sttngs.v1.payload_settings.low_sens_val_register[i] = 0x0000;
+		SM::sd_sttngs.v1.payload_settings.low_sens_id_register[i] = 0x0000;
 	}
 	for (uint8_t i = SensorManager::RESERVED_IDS_COUNT; i < sizeof(SM::sd_sttngs.v1.payload_settings.low_sens_status); i++) {
 		SM::sd_sttngs.v1.payload_settings.low_sens_status[i] = SensorManager::SENSOR_FREE;
-		SM::sd_sttngs.v1.payload_settings.low_sens_register[i] = 0x0000;
+		SM::sd_sttngs.v1.payload_settings.low_sens_val_register[i] = 0x0000;
+		SM::sd_sttngs.v1.payload_settings.low_sens_id_register[i] = 0x0000;
 	}
 	// TODO: реалитзовать проверку наличия всех датчиков со 2 по 127
 	// SensorManager::check_sensors();
@@ -49,25 +51,25 @@ SM::settings_status_t SM::load() {
 	FRESULT res = intstor_read_file(filename, &(SM::sd_sttngs), sizeof(SM::sd_sttngs), &br);
 	if(res != FR_OK) {
 		settings_load_ok = false;
-		LOG_BEDUG(MODULE_TAG, "read_file(%s) error=%i\n", filename, res);
+		LOG_TAG_BEDUG(MODULE_TAG, "read_file(%s) error=%i\n", filename, res);
 	}
 
 	if(SM::sd_sttngs.header.magic != STORAGE_SD_PAYLOAD_MAGIC) {
 		settings_load_ok = false;
-		LOG_BEDUG(MODULE_TAG, "bad settings magic %08lX!=%08lX\n", SM::sd_sttngs.header.magic, STORAGE_SD_PAYLOAD_MAGIC);
+		LOG_TAG_BEDUG(MODULE_TAG, "bad settings magic %08lX!=%08lX\n", SM::sd_sttngs.header.magic, STORAGE_SD_PAYLOAD_MAGIC);
 	}
 
 	if(SM::sd_sttngs.header.version != STORAGE_SD_PAYLOAD_VERSION) {
 		settings_load_ok = false;
-		LOG_BEDUG(MODULE_TAG, "bad settings version %i!=%i\n", SM::sd_sttngs.header.version, STORAGE_SD_PAYLOAD_VERSION);
+		LOG_TAG_BEDUG(MODULE_TAG, "bad settings version %i!=%i\n", SM::sd_sttngs.header.version, STORAGE_SD_PAYLOAD_VERSION);
 	}
 
 	if(!settings_load_ok) {
-		LOG_BEDUG(MODULE_TAG, "settings not loaded, using defaults\n");
+		LOG_TAG_BEDUG(MODULE_TAG, "settings not loaded, using defaults\n");
 		this->reset();
 	}
 
-	LOG_BEDUG(MODULE_TAG, "applying settings\n");
+	LOG_TAG_BEDUG(MODULE_TAG, "applying settings\n");
 
 	if(!settings_load_ok) {
 		return this->save();
@@ -75,7 +77,8 @@ SM::settings_status_t SM::load() {
 
 	// TODO: добавлено для проверки, убрать!
 	SM::sd_sttngs.v1.payload_settings.low_sens_status[1] = SensorManager::SENSOR_TYPE_THERMAL;
-	SM::sd_sttngs.v1.payload_settings.low_sens_register[1] = 0x0000;
+	SM::sd_sttngs.v1.payload_settings.low_sens_val_register[1] = 0x0000;
+	SM::sd_sttngs.v1.payload_settings.low_sens_id_register[1] = 0x0000;
 
 	return SETTINGS_OK;
 }
@@ -89,7 +92,7 @@ SM::settings_status_t SM::save() {
 		DIO_SPI_CardCRC16(&crc, SM::sd_sttngs.bits[i]);
 	SM::sd_sttngs.crc = crc;
 
-	LOG_BEDUG(SM::MODULE_TAG, "saving settings\n");
+	LOG_TAG_BEDUG(SM::MODULE_TAG, "saving settings\n");
 	Debug_HexDump(MODULE_TAG, (uint8_t*)&(SM::sd_sttngs), sizeof(SM::sd_sttngs));
 
 	char filename[64];
@@ -98,10 +101,10 @@ SM::settings_status_t SM::save() {
 	UINT br;
 	FRESULT res = intstor_write_file(filename, &(SM::sd_sttngs), sizeof(SM::sd_sttngs), &br);
 	if(res != FR_OK) {
-		LOG_BEDUG(MODULE_TAG, "settings NOT saved\n");
+		LOG_TAG_BEDUG(MODULE_TAG, "settings NOT saved\n");
 		return SETTINGS_ERROR;
 	}
 
-	LOG_BEDUG(MODULE_TAG, "settings saved\n");
+	LOG_TAG_BEDUG(MODULE_TAG, "settings saved\n");
 	return SETTINGS_OK;
 }

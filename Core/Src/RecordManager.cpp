@@ -5,7 +5,7 @@
 #include "internal_storage.h"
 #include "utils.h"
 
-#define RETURN_FIRST_ID() { LOG_BEDUG(MODULE_TAG, " set first record id - %d\n", 1); return 1; }
+#define RETURN_FIRST_ID() { LOG_TAG_BEDUG(MODULE_TAG, " set first record id - %d\n", 1); return 1; }
 
 
 typedef RecordManager RM;
@@ -40,7 +40,7 @@ do_readline:
 	res = intstor_read_line(filename, &(sd_record), sizeof(sd_record), &br, ptr);
 	if(res != FR_OK) {
 		record_load_ok = false;
-		LOG_BEDUG(MODULE_TAG, " read_file(%s) error=%i\n", filename, res);
+		LOG_TAG_BEDUG(MODULE_TAG, " read_file(%s) error=%i\n", filename, res);
 	}
 	if (br == 0) {
 		return RECORD_EMPTY;
@@ -56,20 +56,20 @@ do_readline:
 
 	if(sd_record.header.magic != STORAGE_SD_PAYLOAD_MAGIC) {
 		record_load_ok = false;
-		LOG_BEDUG(MODULE_TAG, " bad record magic %08lX!=%08lX\n", sd_record.header.magic, STORAGE_SD_PAYLOAD_MAGIC);
+		LOG_TAG_BEDUG(MODULE_TAG, " bad record magic %08lX!=%08lX\n", sd_record.header.magic, STORAGE_SD_PAYLOAD_MAGIC);
 	}
 
 	if(sd_record.header.version != STORAGE_SD_PAYLOAD_VERSION) {
 		record_load_ok = false;
-		LOG_BEDUG(MODULE_TAG, " bad record version %i!=%i\n", sd_record.header.version, STORAGE_SD_PAYLOAD_VERSION);
+		LOG_TAG_BEDUG(MODULE_TAG, " bad record version %i!=%i\n", sd_record.header.version, STORAGE_SD_PAYLOAD_VERSION);
 	}
 
 	if(!record_load_ok) {
-		LOG_BEDUG(MODULE_TAG, " record not loaded\r\n");
+		LOG_TAG_BEDUG(MODULE_TAG, " record not loaded\r\n");
 		return RECORD_ERROR;
 	}
 
-	LOG_BEDUG(MODULE_TAG, " loading record\n");
+	LOG_TAG_BEDUG(MODULE_TAG, " loading record\n");
 
 	if(!record_load_ok) return RECORD_ERROR;
 
@@ -85,7 +85,7 @@ RM::record_status_t RM::save() {
 		DIO_SPI_CardCRC16(&crc, RM::sd_record.bits[i]);
 	RM::sd_record.crc = crc;
 
-	LOG_BEDUG(MODULE_TAG, "saving record\n");
+	LOG_TAG_BEDUG(MODULE_TAG, "saving record\n");
 	Debug_HexDump(MODULE_TAG, (uint8_t*)&(RM::sd_record), sizeof(RM::sd_record));
 
 	char filename[64];
@@ -94,18 +94,18 @@ RM::record_status_t RM::save() {
 	UINT br;
 	FRESULT res = intstor_append_file(filename, &(RM::sd_record), sizeof(RM::sd_record), &br);
 	if(res != FR_OK) {
-		LOG_BEDUG(MODULE_TAG, "settings NOT record\n");
+		LOG_TAG_BEDUG(MODULE_TAG, "settings NOT record\n");
 		return RECORD_ERROR;
 	}
 
-	LOG_BEDUG(MODULE_TAG, "settings record\n");
+	LOG_TAG_BEDUG(MODULE_TAG, "settings record\n");
 
 	return RECORD_OK;
 }
 
 uint32_t RM::get_new_record_id()
 {
-	LOG_BEDUG(MODULE_TAG, " get new log id\n");
+	LOG_TAG_BEDUG(MODULE_TAG, " get new log id\n");
 	record_sd_payload_t tmpbuf;
 	memset(&tmpbuf, 0, sizeof(tmpbuf));
 
@@ -114,7 +114,7 @@ uint32_t RM::get_new_record_id()
 	FRESULT res = instor_find_file(RECORDS_FILENAME);
 	if (res != FR_OK) {
 		record_load_ok = false;
-		LOG_BEDUG(MODULE_TAG, " find_file(%s) error=%i\n", RECORDS_FILENAME, res);
+		LOG_TAG_BEDUG(MODULE_TAG, " find_file(%s) error=%i\n", RECORDS_FILENAME, res);
 		RETURN_FIRST_ID();
 	}
 
@@ -126,7 +126,7 @@ uint32_t RM::get_new_record_id()
 	res = intstor_read_line(filename, &tmpbuf, sizeof(tmpbuf), &br, ptr);
 	if(res != FR_OK) {
 		record_load_ok = false;
-		LOG_BEDUG(MODULE_TAG, " read_file(%s) error=%i\n", filename, res);
+		LOG_TAG_BEDUG(MODULE_TAG, " read_file(%s) error=%i\n", filename, res);
 	}
 	if (br == 0) {
 		RETURN_FIRST_ID();
@@ -137,16 +137,16 @@ uint32_t RM::get_new_record_id()
 
 	if(tmpbuf.header.magic != STORAGE_SD_PAYLOAD_MAGIC) {
 		record_load_ok = false;
-		LOG_BEDUG(MODULE_TAG, " bad record magic %08lX!=%08lX\n", tmpbuf.header.magic, STORAGE_SD_PAYLOAD_MAGIC);
+		LOG_TAG_BEDUG(MODULE_TAG, " bad record magic %08lX!=%08lX\n", tmpbuf.header.magic, STORAGE_SD_PAYLOAD_MAGIC);
 	}
 
 	if(tmpbuf.header.version != STORAGE_SD_PAYLOAD_VERSION) {
 		record_load_ok = false;
-		LOG_BEDUG(MODULE_TAG, " bad record version %i!=%i\n", tmpbuf.header.version, STORAGE_SD_PAYLOAD_VERSION);
+		LOG_TAG_BEDUG(MODULE_TAG, " bad record version %i!=%i\n", tmpbuf.header.version, STORAGE_SD_PAYLOAD_VERSION);
 	}
 
 	if(!record_load_ok) {
-		LOG_BEDUG(MODULE_TAG, " record not loaded\n");
+		LOG_TAG_BEDUG(MODULE_TAG, " record not loaded\n");
 		RETURN_FIRST_ID();
 	}
 
@@ -155,7 +155,7 @@ uint32_t RM::get_new_record_id()
 		RETURN_FIRST_ID();
 	}
 
-	LOG_BEDUG(MODULE_TAG, " next record id - %lu\n", new_id);
+	LOG_TAG_BEDUG(MODULE_TAG, " next record id - %lu\n", new_id);
 
 	return new_id;
 }

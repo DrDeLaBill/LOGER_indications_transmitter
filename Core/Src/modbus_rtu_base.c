@@ -1,12 +1,14 @@
 /*
- MODBUS CRC
- By Liyanboy74
- https://github.com/liyanboy74/modbus
-*/
+ *
+ * Copyright © 2023 Georgy E. All rights reserved.
+ *
+ */
+#include "modbus_rtu_base.h"
 
-#include "modbus/mb-crc.h"
+#include <stdint.h>
 
-static const uint16_t wCRCTable[] = {
+
+const uint16_t crc_table[] = {
 0X0000, 0XC0C1, 0XC181, 0X0140, 0XC301, 0X03C0, 0X0280, 0XC241,
 0XC601, 0X06C0, 0X0780, 0XC741, 0X0500, 0XC5C1, 0XC481, 0X0440,
 0XCC01, 0X0CC0, 0X0D80, 0XCD41, 0X0F00, 0XCFC1, 0XCE81, 0X0E40,
@@ -41,33 +43,15 @@ static const uint16_t wCRCTable[] = {
 0X8201, 0X42C0, 0X4380, 0X8341, 0X4100, 0X81C1, 0X8081, 0X4040
 };
 
-uint16_t mb_crc16 (const uint8_t *nData, uint16_t wLength)
+uint16_t modbus_crc16(const uint8_t* data, uint16_t len)
 {
-	uint8_t nTemp;
-	uint16_t wCRCWord = 0xFFFF;
-	while (wLength--)
-	{
-		nTemp = *nData++ ^ wCRCWord;
-		wCRCWord >>= 8;
-		wCRCWord ^= wCRCTable[nTemp];
-	}
-	return wCRCWord;
-}
-
-uint8_t mb_crc_add(uint8_t *Buffer,uint8_t Len)
-{
-	uint16_t Temp;
-	Temp = mb_crc16(Buffer,Len);
-	Buffer[Len] = Temp&0xff;
-	Buffer[Len+1] = Temp>>8;
-	return Len+2;
-}
-
-mb_crc_e mb_crc_check(uint8_t *Buffer,uint8_t Len)
-{
-    uint16_t Pcrc,Tcrc;
-    Tcrc=mb_crc16(Buffer,Len-2);
-    Pcrc=(Buffer[Len-2])|(Buffer[Len-1]<<8);
-    if(Tcrc==Pcrc)return MB_CRC_OK;
-    return MB_CRC_ERROR;
+    uint8_t tmp;
+    uint16_t crc_word = 0xFFFF;
+    while (len--)
+    {
+        tmp = *data++ ^ crc_word;
+        crc_word >>= 8;
+        crc_word ^= crc_table[tmp];
+    }
+    return crc_word;
 }

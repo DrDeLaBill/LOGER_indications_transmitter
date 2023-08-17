@@ -24,7 +24,8 @@ public:
 		uint32_t sens_record_period;
 		uint32_t sens_transmit_period;
 		uint8_t low_sens_status[LOW_MB_ARR_SIZE];
-		uint16_t low_sens_register[LOW_MB_ARR_SIZE];
+		uint16_t low_sens_val_register[LOW_MB_ARR_SIZE];
+		uint16_t low_sens_id_register[LOW_MB_ARR_SIZE];
 	} payload_settings_t;
 
 	typedef union _settings_sd_payload_t {
@@ -56,7 +57,6 @@ public:
 	settings_status_t load();
 	static settings_status_t reset();
 	static settings_status_t save();
-
 };
 
 

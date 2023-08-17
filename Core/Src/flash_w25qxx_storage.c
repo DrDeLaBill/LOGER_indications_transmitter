@@ -1,0 +1,475 @@
+/* Copyright © 2023 Georgy E. All rights reserved. */
+
+#include <flash_w25qxx_storage.h>
+
+#include <stdint.h>
+#include <stdbool.h>
+
+#include "stm32f4xx_hal.h"
+
+#include "utils.h"
+
+
+#define FLASH_W25_CMD_READ          ((uint8_t)0x03)
+#define FLASH_W25_CMD_WRITE_DISABLE ((uint8_t)0x04)
+#define FLASH_W25_CMD_READ_SR1      ((uint8_t)0x05)
+#define FLASH_W25_CMD_WRITE_ENABLE  ((uint8_t)0x06)
+#define FLASH_W25_CMD_ERASE_SECTOR  ((uint8_t)0x20)
+#define FLASH_W25_CMD_ENABLE_RESET  ((uint8_t)0x66)
+#define FLASH_W25_CMD_RESET         ((uint8_t)0x99)
+#define FLASH_W25_CMD_JEDEC_ID      ((uint8_t)0x9f)
+
+#define FLASH_W25_PAGE_SIZE         ((uint16_t)0x100)
+#define FLASH_W25_SECTOR_SIZE       ((uint16_t)0x1000)
+#define FLASH_W25_SECTORS_COUNT     ((uint16_t)0x10)
+#define FLASH_W25_JEDEC_ID_SIZE     (sizeof(uint32_t))
+#define FLASH_W25_SR1_BUSY          ((uint8_t)0b00000001)
+#define FLASH_W25_SR1_WEL           ((uint8_t)0b00000010)
+#define FLASH_W25_24BIT_ADDR_SIZE   ((uint16_t)512)
+
+#define FLASH_SPI_TIMEOUЕ_MS        ((uint32_t)1000)
+#define FLASH_SPI_COMMAND_SIZE_MAX  ((uint8_t)10)
+
+
+flash_status_t _flash_read_jdec_id(uint32_t* jdec_id);
+flash_status_t _flash_read_SR1(uint8_t* SR1);
+flash_status_t _flash_write_enable();
+flash_status_t _flash_write_disable();
+flash_status_t _flash_erase_sector(uint32_t addr);
+
+flash_status_t _flash_send_data(uint8_t* data, uint16_t len);
+flash_status_t _flash_recieve_data(uint8_t* data, uint16_t len);
+void           _flash_spi_cs_set();
+void           _flash_spi_cs_reset();
+
+bool           _flash_check_FREE();
+bool           _flash_check_WEL();
+
+uint32_t       _flash_get_storage_bytes_size();
+
+
+#ifdef DEBUG
+const char* FLASH_TAG = "FLSH";
+#endif
+
+
+#define FLASH_W25_JDEC_ID_BLOCK_COUNT_MASK ((uint16_t)0x4011)
+const uint16_t w25qxx_jdec_id_block_count[] = {
+	2,   // w25q10
+	4,   // w25q20
+	8,   // w25q40
+	16,  // w25q80
+	32,  // w25q16
+	64,  // w25q32
+	128, // w25q64
+	256, // w25q128
+	512, // w25q256
+	1024 // w25q512
+};
+
+
+flash_w25qxx_info_t flash_w25qxx_info = {
+	.initialized      = false,
+	.is_24bit_address = false,
+
+	.page_size        = FLASH_W25_PAGE_SIZE,
+	.pages_count      = FLASH_W25_SECTOR_SIZE / FLASH_W25_PAGE_SIZE,
+
+	.sector_size      = FLASH_W25_SECTOR_SIZE,
+	.sectors_count    = FLASH_W25_SECTORS_COUNT,
+
+	.block_size       = FLASH_W25_SECTORS_COUNT * FLASH_W25_SECTOR_SIZE,
+	.blocks_count     = 0
+};
+
+
+flash_status_t flash_w25qxx_init()
+{
+	uint32_t jdec_id = 0;
+	flash_status_t status = _flash_read_jdec_id(&jdec_id);
+	if (status != FLASH_OK) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "flash init error=%02x (read JDEC ID)", status);
+#endif
+		return status;
+	}
+
+	flash_w25qxx_info.blocks_count = 0;
+	uint16_t jdec_id_2b = (uint16_t)jdec_id;
+	for (uint16_t i = 0; i < __sizeof_arr(w25qxx_jdec_id_block_count); i++) {
+		if ((uint16_t)(FLASH_W25_JDEC_ID_BLOCK_COUNT_MASK + i) == jdec_id_2b) {
+			flash_w25qxx_info.blocks_count = w25qxx_jdec_id_block_count[i];
+			break;
+		}
+	}
+
+	if (!flash_w25qxx_info.blocks_count) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "flash init error - unknown JDEC ID", status);
+#endif
+		return FLASH_ERROR;
+	}
+
+
+#if FLASH_BEDUG
+	LOG_TAG_BEDUG(FLASH_TAG, "flash JDEC ID found: id=%08x, page_count=%u", jdec_id, flash_w25qxx_info.page_count);
+#endif
+
+	flash_w25qxx_info.initialized      = true;
+	flash_w25qxx_info.is_24bit_address = (flash_w25qxx_info.blocks_count >= FLASH_W25_24BIT_ADDR_SIZE) ? true : false;
+}
+
+flash_status_t flash_w25qxx_reset()
+{
+	_flash_spi_cs_set();
+
+	uint8_t spi_cmd[] = { FLASH_W25_CMD_ENABLE_RESET, FLASH_W25_CMD_RESET };
+
+	flash_status_t status = _flash_send_data(spi_cmd, sizeof(spi_cmd));
+
+	_flash_spi_cs_reset();
+
+	return status;
+}
+
+flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len)
+{
+	flash_status_t status = FLASH_OK;
+	if (!flash_w25qxx_info.initialized) {
+		status = flash_w25qxx_init();
+	}
+
+	if (status != FLASH_OK) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu error=%02x (flash was not initialized)", addr, status);
+#endif
+		return status;
+	}
+
+	if (addr + len > _flash_get_storage_bytes_size()) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu error (unacceptable address)", addr);
+#endif
+		return FLASH_OOM;
+	}
+
+	_flash_spi_cs_set();
+
+
+	uint8_t spi_cmd[FLASH_SPI_COMMAND_SIZE_MAX] = { 0 };
+	uint8_t counter = 0;
+	spi_cmd[counter++] = FLASH_W25_CMD_READ;
+	if (flash_w25qxx_info.is_24bit_address) {
+		spi_cmd[counter++] = (addr >> 24) & 0xFF;
+	}
+	spi_cmd[counter++] = (addr >> 16) & 0xFF;
+	spi_cmd[counter++] = (addr >> 8) & 0xFF;
+	spi_cmd[counter++] = addr & 0xFF;
+
+	status = _flash_send_data(spi_cmd, counter);
+	if (status != FLASH_OK) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu error=%02x (send command)", addr, status);
+#endif
+		goto do_spi_stop;
+	}
+
+	status = _flash_recieve_data(data, len);
+	if (status != FLASH_OK) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu error=%02x (recieve data)", addr, status);
+#endif
+		goto do_spi_stop;
+	}
+
+do_spi_stop:
+	_flash_spi_cs_reset();
+
+	return status;
+}
+
+flash_status_t flash_w25qxx_write(uint32_t addr, uint8_t* data, uint32_t len)
+{
+	flash_status_t status = FLASH_OK;
+	if (!flash_w25qxx_info.initialized) {
+		status = flash_w25qxx_init();
+	}
+
+	if (status != FLASH_OK) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "flash write addr=%lu error=%02x (flash was not initialized)", addr, status);
+#endif
+		return status;
+	}
+
+	if (addr + len > _flash_get_storage_bytes_size()) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "flash write addr=%lu error (unacceptable address)", addr);
+#endif
+		return FLASH_ERROR;
+	}
+
+	if (len > flash_w25qxx_info.page_size) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "flash write addr=%lu error (unacceptable data length)", addr);
+#endif
+		return FLASH_ERROR;
+	}
+
+	uint32_t sector_addr = (addr / FLASH_W25_SECTOR_SIZE) * FLASH_W25_SECTOR_SIZE;
+	uint8_t  sector_tmp_buf[FLASH_W25_SECTOR_SIZE] = { 0xFF };
+	status = flash_w25qxx_read(sector_addr, sector_tmp_buf, sizeof(sector_tmp_buf));
+	if (status != FLASH_OK) {
+#if FLASH_BEDUG
+		uint32_t block_num = sector_addr / flash_w25qxx_info.block_size;
+		uint32_t sector_num = (sector_addr % flash_w25qxx_info.block_size) / flash_w25qxx_info.sector_size;
+		LOG_TAG_BEDUG(FLASH_TAG, "flash write addr=%lu error (unable to read block_addr=%lu sector_addr=%lu)", addr, block_num, sector_num);
+#endif
+		return status;
+	}
+
+	uint8_t cmpr_buf[FLASH_W25_PAGE_SIZE] = { 0xFF };
+	uint8_t read_buf[FLASH_W25_PAGE_SIZE] = { 0xFF };
+	status = flash_w25qxx_read(addr, read_buf, len);
+	if (status != FLASH_OK) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "flash write addr=%lu error (read target page)", addr);
+#endif
+		return status;
+	}
+
+	if (memcmp(cmpr_buf, read_buf, flash_w25qxx_info.page_size)) {
+//		status = erase_sector
+	}
+
+	_flash_spi_cs_set();
+
+
+
+do_spi_stop:
+	_flash_spi_cs_reset();
+
+	return status;
+}
+
+
+flash_status_t _flash_read_jdec_id(uint32_t* jdec_id)
+{
+	bool cs_selected = (HAL_GPIO_ReadPin(FLASH_SPI_CS_GPIO_Port, FLASH_SPI_CS_GPIO_Pin) == GPIO_PIN_RESET);
+	if (!cs_selected) {
+		_flash_spi_cs_set();
+	}
+
+	uint8_t spi_cmd[] = { FLASH_W25_CMD_JEDEC_ID };
+	flash_status_t status = _flash_send_data(spi_cmd, sizeof(spi_cmd));
+	if (status != FLASH_OK) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "get JDEC ID error=%02x (send command)", status);
+#endif
+		goto do_spi_stop;
+	}
+
+	uint8_t data[FLASH_W25_JEDEC_ID_SIZE] = { 0 };
+	status = _flash_recieve_data(data, sizeof(data));
+	if (status != FLASH_OK) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "get JDEC ID error=%02x (recieve data)", status);
+#endif
+		goto do_spi_stop;
+	}
+
+	*jdec_id = ((((uint32_t)data[0]) << 16) | (((uint32_t)data[1]) << 8) | ((uint32_t)data[2]));
+
+do_spi_stop:
+	if (!cs_selected) {
+		_flash_spi_cs_reset();
+	}
+
+	return status;
+}
+
+flash_status_t _flash_read_SR1(uint8_t* SR1)
+{
+	bool cs_selected = (HAL_GPIO_ReadPin(FLASH_SPI_CS_GPIO_Port, FLASH_SPI_CS_GPIO_Pin) == GPIO_PIN_RESET);
+	if (!cs_selected) {
+		_flash_spi_cs_set();
+	}
+
+	uint8_t spi_cmd[] = { FLASH_W25_CMD_READ_SR1 };
+	flash_status_t status = _flash_send_data(spi_cmd, sizeof(spi_cmd));
+	if (status != FLASH_OK) {
+		return status;
+	}
+
+	status = _flash_recieve_data(SR1, sizeof(uint8_t));
+	if (status != FLASH_OK) {
+		return status;
+	}
+
+	if (!cs_selected) {
+		_flash_spi_cs_reset();
+	}
+
+	return FLASH_OK;
+}
+
+flash_status_t _flash_write_enable()
+{
+	_flash_spi_cs_set();
+
+	uint8_t spi_cmd[] = { FLASH_W25_CMD_WRITE_ENABLE };
+	flash_status_t status = _flash_send_data(data, sizeof(data));
+#if FLASH_BEDUG
+	if (status != FLASH_OK) {
+		LOG_TAG_BEDUG(FLASH_TAG, "write enable error=%02x");
+	}
+#endif
+
+	_flash_spi_cs_reset();
+
+	return status;
+}
+
+flash_status_t _flash_write_disable()
+{
+	_flash_spi_cs_set();
+
+	uint8_t spi_cmd[] = { FLASH_W25_CMD_WRITE_DISABLE };
+	flash_status_t status = _flash_send_data(data, sizeof(data));
+#if FLASH_BEDUG
+	if (status != FLASH_OK) {
+		LOG_TAG_BEDUG(FLASH_TAG, "write disable error=%02x");
+	}
+#endif
+
+	_flash_spi_cs_reset();
+
+	return status;
+}
+
+flash_status_t _flash_erase_sector(uint32_t addr) {
+	if (addr % flash_w25qxx_info.sector_size > 0) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "erase sector addr=%lu error (unacceptable address)", addr);
+#endif
+		return FLASH_ERROR;
+	}
+
+	uint8_t spi_cmd[FLASH_SPI_COMMAND_SIZE_MAX] = { 0 };
+	uint8_t counter = 0;
+	spi_cmd[counter++] = FLASH_W25_CMD_ERASE_SECTOR;
+	if (flash_w25qxx_info.is_24bit_address) {
+		spi_cmd[counter++] = (addr >> 24) & 0xFF;
+	}
+	spi_cmd[counter++] = (addr >> 16) & 0xFF;
+	spi_cmd[counter++] = (addr >> 8) & 0xFF;
+	spi_cmd[counter++] = addr & 0xFF;
+
+	_flash_spi_cs_set();
+
+	if (!util_wait_event(_flash_check_WEL, FLASH_SPI_TIMEOUT)) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "erase sector addr=%lu error (flash is busy)", addr);
+#endif
+		goto do_spi_stop;
+	}
+
+	flash_status_t status = _flash_write_enable();
+	if (status != FLASH_OK) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "erase sector addr=%lu error=%02x (write is not enabled)", addr, status);
+#endif
+		goto do_spi_stop;
+	}
+
+	status = _flash_send_data(spi_cmd, counter);
+	if (status != FLASH_OK) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "erase sector addr=%lu error=%02x (write is not enabled)", addr, status);
+#endif
+		goto do_spi_stop;
+	}
+
+	status = _flash_write_disable();
+	if (status != FLASH_OK) {
+#if FLASH_BEDUG
+		LOG_TAG_BEDUG(FLASH_TAG, "erase sector addr=%lu error=%02x (write is not disabled)", addr, status);
+#endif
+		goto do_spi_stop;
+	}
+
+do_spi_stop:
+	_flash_spi_cs_reset();
+
+	return status;
+}
+
+
+flash_status_t _flash_send_data(uint8_t* data, uint16_t len)
+{
+	if (!util_wait_event(_flash_check_FREE, FLASH_SPI_TIMEOUT)) {
+		return FLASH_BUSY;
+	}
+
+	HAL_StatusTypeDef status = HAL_SPI_Transmit(&FLASH_SPI, data, len, FLASH_SPI_TIMEOUT);
+	if (status == HAL_BUSY) {
+		return FLASH_BUSY;
+	}
+	if (status != HAL_OK) {
+		return FLASH_ERROR;
+	}
+	return FLASH_OK;
+}
+
+flash_status_t _flash_recieve_data(uint8_t* data, uint16_t len)
+{
+	if (!util_wait_event(_flash_check_FREE, FLASH_SPI_TIMEOUT)) {
+		return FLASH_BUSY;
+	}
+
+	HAL_StatusTypeDef status = HAL_SPI_Receive(&FLASH_SPI, data, len, FLASH_SPI_TIMEOUT);
+	if (status == HAL_BUSY) {
+		return FLASH_BUSY;
+	}
+	if (status != HAL_OK) {
+		return FLASH_ERROR;
+	}
+	return FLASH_OK;
+}
+
+void _flash_spi_cs_set()
+{
+	HAL_GPIO_WritePin(FLASH_SPI_CS_GPIO_Port, FLASH_SPI_CS_GPIO_Pin, GPIO_PIN_RESET);
+}
+
+void _flash_spi_cs_reset()
+{
+	HAL_GPIO_WritePin(FLASH_SPI_CS_GPIO_Port, FLASH_SPI_CS_GPIO_Pin, GPIO_PIN_SET);
+}
+
+bool _flash_check_FREE()
+{
+	uint8_t SR1 = 0x00;
+	flash_status_t status = _flash_read_SR1(&SR1);
+	if (status != FLASH_OK) {
+		return false;
+	}
+
+	return !(SR1 & FLASH_W25_SR1_BUSY);
+}
+
+bool _flash_check_WEL()
+{
+	uint8_t SR1 = 0x00;
+	flash_status_t status = _flash_read_SR1(&SR1);
+	if (status != FLASH_OK) {
+		return false;
+	}
+
+	return SR1 & FLASH_W25_SR1_WEL;
+}
+
+uint32_t _flash_get_storage_bytes_size()
+{
+	return flash_w25qxx_info.blocks_count * flash_w25qxx_info.block_size;
+}

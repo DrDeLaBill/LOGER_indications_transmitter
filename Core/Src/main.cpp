@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "fatfs.h"
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
@@ -81,8 +80,11 @@ uint16_t CUPSlaveManager::load_data_to_buffer_handler(uint8_t* buffer) {
 		for (uint16_t i = 0; i < (sizeof(SettingsManager::sd_sttngs.v1.payload_settings.low_sens_status) / sizeof(*SettingsManager::sd_sttngs.v1.payload_settings.low_sens_status)); i++) {
 			counter += serialize(&buffer[counter], SettingsManager::sd_sttngs.v1.payload_settings.low_sens_status[i]);
 		}
-		for (uint16_t i = 0; i < (sizeof(SettingsManager::sd_sttngs.v1.payload_settings.low_sens_register) / sizeof(*SettingsManager::sd_sttngs.v1.payload_settings.low_sens_register)); i++) {
-			counter += serialize(&buffer[counter], SettingsManager::sd_sttngs.v1.payload_settings.low_sens_register[i]);
+		for (uint16_t i = 0; i < (sizeof(SettingsManager::sd_sttngs.v1.payload_settings.low_sens_val_register) / sizeof(*SettingsManager::sd_sttngs.v1.payload_settings.low_sens_val_register)); i++) {
+			counter += serialize(&buffer[counter], SettingsManager::sd_sttngs.v1.payload_settings.low_sens_val_register[i]);
+		}
+		for (uint16_t i = 0; i < (sizeof(SettingsManager::sd_sttngs.v1.payload_settings.low_sens_id_register) / sizeof(*SettingsManager::sd_sttngs.v1.payload_settings.low_sens_id_register)); i++) {
+			counter += serialize(&buffer[counter], SettingsManager::sd_sttngs.v1.payload_settings.low_sens_id_register[i]);
 		}
 		break;
 	case CUP_CMD_DATA:
@@ -118,16 +120,19 @@ void CUPSlaveManager::load_settings_data_handler() {
 	for (uint16_t i = 0; i < (sizeof(tmpBuf.low_sens_status) / sizeof(*tmpBuf.low_sens_status)); i++) {
 		counter += deserialize(&buffer[counter], &(tmpBuf.low_sens_status[i]));
 	}
-	for (uint16_t i = 0; i < (sizeof(tmpBuf.low_sens_register) / sizeof(tmpBuf.low_sens_register)); i++) {
-		counter += deserialize(&buffer[counter], &(tmpBuf.low_sens_register[i]));
+	for (uint16_t i = 0; i < (sizeof(tmpBuf.low_sens_val_register) / sizeof(*tmpBuf.low_sens_val_register)); i++) {
+		counter += deserialize(&buffer[counter], &(tmpBuf.low_sens_val_register[i]));
+	}
+	for (uint16_t i = 0; i < (sizeof(tmpBuf.low_sens_id_register) / sizeof(*tmpBuf.low_sens_id_register)); i++) {
+		counter += deserialize(&buffer[counter], &(tmpBuf.low_sens_id_register[i]));
 	}
 
 	if (!tmpBuf.sens_record_period || !tmpBuf.sens_transmit_period) {
-		LOG_BEDUG(MODULE_TAG, " unavailable settings\n");
+		LOG_TAG_BEDUG(MODULE_TAG, " unavailable settings\n");
 		return;
 	}
 
-	LOG_BEDUG(MODULE_TAG, " save new settings\n");
+	LOG_TAG_BEDUG(MODULE_TAG, " save new settings\n");
 	memcpy((uint8_t*)&(SettingsManager::sd_sttngs.v1.payload_settings), (uint8_t*)&tmpBuf, sizeof(SettingsManager::payload_settings_t));
 	Debug_HexDump(MODULE_TAG, (uint8_t*)&(tmpBuf), sizeof(SettingsManager::payload_settings_t));
 	SettingsManager::save();
@@ -140,7 +145,7 @@ void CUPSlaveManager::send_byte(uint8_t msg) {
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (huart->Instance == LOW_MB_UART_INSTC) {
-		mb_rx_new_data((uint8_t)low_modbus_uart_val);
+		modbus_master_recieve_data_byte((uint8_t)low_modbus_uart_val);
 		HAL_UART_Receive_IT(&LOW_MB_UART, (uint8_t*)&low_modbus_uart_val, 1);
 	} else if (huart->Instance == CUP_UART_INSTANCE) {
 		CUP_m->char_data_handler(CUP_uart_val);
@@ -193,8 +198,9 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM1_Init();
   MX_USART6_UART_Init();
-  MX_FATFS_Init();
   MX_UART4_Init();
+  MX_USART1_UART_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   stngs_m = new SettingsManager();
   rcrd_m = new RecordManager();
@@ -204,7 +210,6 @@ int main(void)
   HAL_GPIO_WritePin(BEDUG_LED_GPIO_Port, BEDUG_LED_Pin, GPIO_PIN_RESET);
   HAL_UART_Receive_IT(&LOW_MB_UART, (uint8_t*)&low_modbus_uart_val, 1);
   HAL_UART_Receive_IT(&CUP_UART, (uint8_t*)&CUP_uart_val, 1);
-  /* USER CODE END 2 */
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -268,15 +273,15 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-#ifdef DEBUG
 int _write(int file, uint8_t *ptr, int len) {
-//	HAL_UART_Transmit(&CMD_UART, (uint8_t *) ptr, len, DEFAULT_UART_DELAY);
+	HAL_UART_Transmit(&PRINT_MESSAGE_UART, (uint8_t *)ptr, len, DEFAULT_UART_DELAY);
+#ifdef DEBUG
 	for (int DataIdx = 0; DataIdx < len; DataIdx++) {
 		ITM_SendChar(*ptr++);
 	}
 	return len;
-}
 #endif
+}
 /* USER CODE END 4 */
 
 /**
@@ -288,6 +293,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
+  NVIC_SystemReset();
   while (1)
   {
   }

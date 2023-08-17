@@ -8,7 +8,7 @@
 #include "RecordManager.h"
 #include "utils.h"
 #include "internal_storage.h"
-#include "modbus/mb-table.h"
+#include "modbus_rtu_master.h"
 
 
 #define MODBUS_DATA_OFFSET 16
@@ -47,7 +47,7 @@ private:
 	static uint8_t mb_send_data_length;
 
     static void send_request(uint8_t* data,uint8_t Len);
-    static void modbus_master_process(mb_packet_s* packet);
+    static void response_packet_handler(modbus_response_t* packet);
     void update_modbus_slave_id();
     void registrate_modbus_error();
     bool write_sensors_data();
