@@ -43,7 +43,7 @@ extern flash_w25qxx_info_t flash_w25qxx_info;
 
 
 flash_status_t flash_w25qxx_init();
-flash_status_t flash_w25qxx_reset();\
+flash_status_t flash_w25qxx_reset();
 flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len);
 flash_status_t flash_w25qxx_write(uint32_t addr, uint8_t* data, uint32_t len);
 

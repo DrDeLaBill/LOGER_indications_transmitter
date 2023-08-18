@@ -78,9 +78,7 @@ void Error_Handler(void);
 #define DATA_TRNS_PERIOD_MS 86400000
 // SD card
 extern SPI_HandleTypeDef  hspi1;
-#define SD_HSPI           hspi1
-#define SD_CS_GPIO_Port   SD_NSS_GPIO_Port
-#define SD_CS_Pin         SD_NSS_Pin
+#define FLASH_SPI         hspi1
 // MODBUS
 extern UART_HandleTypeDef huart4;
 #define LOW_MB_UART       huart4
