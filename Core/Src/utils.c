@@ -67,3 +67,13 @@ bool util_wait_event(bool (*condition) (void), uint32_t time)
     }
     return false;
 }
+
+int _write(int file, uint8_t *ptr, int len) {
+	HAL_UART_Transmit(&PRINT_MESSAGE_UART, (uint8_t *)ptr, len, DEFAULT_UART_DELAY);
+#ifdef DEBUG
+	for (int DataIdx = 0; DataIdx < len; DataIdx++) {
+		ITM_SendChar(*ptr++);
+	}
+	return len;
+#endif
+}

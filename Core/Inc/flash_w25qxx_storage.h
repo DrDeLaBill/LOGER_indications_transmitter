@@ -15,6 +15,9 @@ extern "C" {
 
 #define FLASH_BEDUG (true)
 
+#define FLASH_W25_PAGE_SIZE     ((uint16_t)0x100)
+#define FLASH_W25_SECTOR_SIZE   ((uint16_t)0x1000)
+#define FLASH_W25_SECTORS_COUNT ((uint16_t)0x10)
 
 typedef enum _flash_status_t {
 	FLASH_OK    = ((uint8_t)0x00),
@@ -46,6 +49,8 @@ flash_status_t flash_w25qxx_init();
 flash_status_t flash_w25qxx_reset();
 flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len);
 flash_status_t flash_w25qxx_write(uint32_t addr, uint8_t* data, uint32_t len);
+
+uint32_t flash_w25qxx_get_pages_count();
 
 
 #ifdef __cplusplus

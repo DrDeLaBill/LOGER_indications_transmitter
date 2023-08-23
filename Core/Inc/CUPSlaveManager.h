@@ -1,4 +1,5 @@
 /*
+ * Copyright © 2023 Georgy E. All rights reserved.
  *
  * CUPSlaveManager
  * Custom UART Protocol manager - slave

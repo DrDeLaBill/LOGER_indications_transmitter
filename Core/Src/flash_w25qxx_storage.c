@@ -12,20 +12,19 @@
 #include "main.h"
 
 
-#define FLASH_W25_CMD_WRITE_SR1       ((uint8_t)0x01)
-#define FLASH_W25_CMD_READ            ((uint8_t)0x03)
-#define FLASH_W25_CMD_WRITE_DISABLE   ((uint8_t)0x04)
-#define FLASH_W25_CMD_READ_SR1        ((uint8_t)0x05)
-#define FLASH_W25_CMD_WRITE_ENABLE    ((uint8_t)0x06)
-#define FLASH_W25_CMD_ERASE_SECTOR    ((uint8_t)0x20)
-#define FLASH_W25_CMD_WRITE_ENABLE_SR ((uint8_t)0x50)
-#define FLASH_W25_CMD_ENABLE_RESET    ((uint8_t)0x66)
-#define FLASH_W25_CMD_RESET           ((uint8_t)0x99)
-#define FLASH_W25_CMD_JEDEC_ID        ((uint8_t)0x9f)
+typedef enum _flash_w25_command_t {
+	FLASH_W25_CMD_WRITE_SR1       = ((uint8_t)0x01),
+	FLASH_W25_CMD_READ            = ((uint8_t)0x03),
+	FLASH_W25_CMD_WRITE_DISABLE   = ((uint8_t)0x04),
+	FLASH_W25_CMD_READ_SR1        = ((uint8_t)0x05),
+	FLASH_W25_CMD_WRITE_ENABLE    = ((uint8_t)0x06),
+	FLASH_W25_CMD_ERASE_SECTOR    = ((uint8_t)0x20),
+	FLASH_W25_CMD_WRITE_ENABLE_SR = ((uint8_t)0x50),
+	FLASH_W25_CMD_ENABLE_RESET    = ((uint8_t)0x66),
+	FLASH_W25_CMD_RESET            = ((uint8_t)0x99),
+	FLASH_W25_CMD_JEDEC_ID        = ((uint8_t)0x9f)
+} flash_w25_command_t;
 
-#define FLASH_W25_PAGE_SIZE           ((uint16_t)0x100)
-#define FLASH_W25_SECTOR_SIZE         ((uint16_t)0x1000)
-#define FLASH_W25_SECTORS_COUNT       ((uint16_t)0x10)
 #define FLASH_W25_JEDEC_ID_SIZE       (sizeof(uint32_t))
 #define FLASH_W25_SR1_BUSY            ((uint8_t)0b00000001)
 #define FLASH_W25_SR1_WEL             ((uint8_t)0b00000010)
@@ -406,6 +405,10 @@ do_block_protect:
 	return status;
 }
 
+uint32_t flash_w25qxx_get_pages_count()
+{
+	return flash_w25qxx_info.pages_count * flash_w25qxx_info.sectors_count * flash_w25qxx_info.blocks_count;
+}
 
 flash_status_t _flash_read_jdec_id(uint32_t* jdec_id)
 {

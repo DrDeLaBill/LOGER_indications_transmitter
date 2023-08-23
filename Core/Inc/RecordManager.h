@@ -4,8 +4,8 @@
 
 #include <stdint.h>
 
-#include "internal_storage.h"
 #include "main.h"
+#include "storage_data_manager.h"
 
 
 class RecordManager {
@@ -17,35 +17,18 @@ public:
 		RECORD_EMPTY
 	} record_status_t;
 
-	// Record structure in storage
-	typedef struct __attribute__((packed)) _payload_record_t {
+	typedef struct __attribute__((packed)) _record_t {
 		uint32_t record_id;
 		uint32_t record_time;
-		uint8_t sensors_statuses[LOW_MB_ARR_SIZE];
-		int16_t sensors_values[LOW_MB_ARR_SIZE];
-	} payload_record_t;
+		uint8_t  sensors_statuses[LOW_MB_ARR_SIZE];
+		int16_t  sensors_values[LOW_MB_ARR_SIZE];
+	} record_t;
 
 private:
-	typedef union _record_sd_payload_t {
-		struct __attribute__((packed)) {
-			struct _sd_payload_header_t header;
-			uint8_t bits[SD_PAYLOAD_BITS_SIZE(STORAGE_SD_MAX_PAYLOAD_SIZE)];
-			uint16_t crc;
-		};
-		struct __attribute__((packed)) {
-			struct _sd_payload_header_t header;
-			payload_record_t payload_record;
-		} v1;
-	} record_sd_payload_t;
-
 	static const char* MODULE_TAG;
 
-	static const char* RECORDS_FILENAME;
-
-	static record_sd_payload_t sd_record;
-
 public:
-	static payload_record_t* sens_record;
+	static record_t record;
 
 	RecordManager();
     static record_status_t load(uint32_t record_id);

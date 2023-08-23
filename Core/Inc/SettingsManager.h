@@ -3,13 +3,16 @@
 
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "main.h"
+#include "storage_data_manager.h"
 
-#include "internal_storage.h"
 
+#define SETTINGS_BEDUG                 (true)
 
-#define LOW_MODBUS_COUNT LOW_MB_SENS_COUNT + 1
+#define SETTINGS_CONFIG_STRUCT_VERSION ((uint8_t)1)
+#define SETTINGS_LOW_MODBUS_COUNT      (LOW_MB_SENS_COUNT + 1)
 
 
 class SettingsManager {
@@ -17,28 +20,15 @@ class SettingsManager {
 private:
 	static const char* MODULE_TAG;
 
-	static const char* SETTINGS_FILENAME;
-
 public:
-	typedef struct __attribute__((packed)) _payload_settings_t  {
+	typedef struct __attribute__((packed)) _settings_t  {
+		uint8_t  config_struct_version;
 		uint32_t sens_record_period;
 		uint32_t sens_transmit_period;
-		uint8_t low_sens_status[LOW_MB_ARR_SIZE];
+		uint8_t  low_sens_status[LOW_MB_ARR_SIZE];
 		uint16_t low_sens_val_register[LOW_MB_ARR_SIZE];
 		uint16_t low_sens_id_register[LOW_MB_ARR_SIZE];
-	} payload_settings_t;
-
-	typedef union _settings_sd_payload_t {
-		struct __attribute__((packed)) {
-			struct _sd_payload_header_t header;
-			uint8_t bits[SD_PAYLOAD_BITS_SIZE(STORAGE_SD_MAX_PAYLOAD_SIZE)];
-			uint16_t crc;
-		};
-		struct __attribute__((packed)) {
-			struct _sd_payload_header_t header;
-			payload_settings_t payload_settings;
-		} v1;
-	} settings_sd_payload_t;
+	} settings_t;
 
 	typedef enum _settings_status_t {
 		SETTINGS_OK = 0,
@@ -51,10 +41,10 @@ public:
 		DEVICE_TYPE_MAIN
 	} device_type_t;
 
-	static settings_sd_payload_t sd_sttngs;
+	static settings_t sttngs;
 
 	SettingsManager();
-	settings_status_t load();
+	static settings_status_t load();
 	static settings_status_t reset();
 	static settings_status_t save();
 };
