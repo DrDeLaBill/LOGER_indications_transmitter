@@ -7,7 +7,7 @@
 #include "DeviceStateBase.h"
 #include "RecordManager.h"
 #include "utils.h"
-#include "internal_storage.h"
+#include "storage_data_manager.h"
 #include "modbus_rtu_master.h"
 
 
@@ -48,6 +48,7 @@ private:
 
     static void send_request(uint8_t* data,uint8_t Len);
     static void response_packet_handler(modbus_response_t* packet);
+
     void update_modbus_slave_id();
     void registrate_modbus_error();
     bool write_sensors_data();

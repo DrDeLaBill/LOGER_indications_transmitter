@@ -1,9 +1,11 @@
 #include "utils.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "main.h"
 #include "stm32f4xx_hal.h"
 
 
@@ -38,7 +40,7 @@ uint16_t util_get_crc16(uint8_t* buf, uint16_t len) {
 #ifdef DEBUG
 void util_debug_hex_dump(const char* tag, const uint8_t* buf, uint16_t len) {
 	const uint8_t cols_count = 16;
-	for (uint32_t i = 0; i < len / cols_count; i++) {
+	for (unsigned int i = 0; i < len / cols_count; i++) {
 		LOG_TAG_BEDUG(tag, "");
 		LOG_BEDUG("%08x: ", i);
 		for (uint32_t j = 0; j < cols_count; j++) {
@@ -60,20 +62,10 @@ void util_debug_hex_dump(const char* tag, const uint8_t* buf, uint16_t len) {}
 bool util_wait_event(bool (*condition) (void), uint32_t time)
 {
     uint32_t start_time = HAL_GetTick();
-    while (__abs(start_time - HAL_GetTick()) < time) {
+    while (__abs_dif(start_time, HAL_GetTick()) < time) {
         if (condition()) {
             return true;
         }
     }
     return false;
-}
-
-int _write(int file, uint8_t *ptr, int len) {
-	HAL_UART_Transmit(&PRINT_MESSAGE_UART, (uint8_t *)ptr, len, DEFAULT_UART_DELAY);
-#ifdef DEBUG
-	for (int DataIdx = 0; DataIdx < len; DataIdx++) {
-		ITM_SendChar(*ptr++);
-	}
-	return len;
-#endif
 }

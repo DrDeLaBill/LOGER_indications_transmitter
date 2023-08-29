@@ -11,9 +11,9 @@
 typedef SettingsManager SM;
 
 
-const char* SM::MODULE_TAG              = "STNG";
+const char* SM::MODULE_TAG = "STNG";
 
-SM::settings_sd_payload_t SM::sd_sttngs = { 0 };
+SM::settings_t SM::sttngs  = { 0 };
 
 
 SM::SettingsManager() {

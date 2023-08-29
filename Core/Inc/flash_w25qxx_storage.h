@@ -20,25 +20,25 @@ extern "C" {
 #define FLASH_W25_SECTORS_COUNT ((uint16_t)0x10)
 
 typedef enum _flash_status_t {
-	FLASH_OK    = ((uint8_t)0x00),
-	FLASH_ERROR = ((uint8_t)0x01),
-	FLASH_BUSY  = ((uint8_t)0x02),
-	FLASH_OOM   = ((uint8_t)0x03)  // Out Of Memory
+    FLASH_OK    = ((uint8_t)0x00),
+    FLASH_ERROR = ((uint8_t)0x01),
+    FLASH_BUSY  = ((uint8_t)0x02),
+    FLASH_OOM   = ((uint8_t)0x03)  // Out Of Memory
 } flash_status_t;
 
 
 typedef struct _flash_w25qxx_info_t {
-	bool     initialized;
-	bool     is_24bit_address;
+    bool     initialized;
+    bool     is_24bit_address;
 
-	uint16_t page_size;
-	uint32_t pages_count;
+    uint16_t page_size;
+    uint32_t pages_count;
 
-	uint16_t sector_size;
-	uint16_t sectors_count;
+    uint16_t sector_size;
+    uint16_t sectors_count;
 
-	uint32_t block_size;
-	uint16_t blocks_count;
+    uint32_t block_size;
+    uint16_t blocks_count;
 } flash_w25qxx_info_t;
 
 

@@ -8,6 +8,9 @@
 #include "storage_data_manager.h"
 
 
+#define RECORD_BEDUG (true)
+
+
 class RecordManager {
 
 public:
@@ -33,7 +36,7 @@ public:
 	RecordManager();
     static record_status_t load(uint32_t record_id);
 	static record_status_t save();
-	static uint32_t get_new_record_id();
+	static record_status_t get_new_record_id(uint32_t* new_id);
 
 };
 
