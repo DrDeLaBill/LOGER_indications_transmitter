@@ -285,13 +285,29 @@ storage_status_t _storage_write(uint32_t page_addr, uint8_t* buff, uint32_t len,
 #if STORAGE_DEBUG
     LOG_TAG_BEDUG(STORAGE_TAG, "write page (address=%lu): begin", page_addr);
 #endif
-
+    
     uint32_t cur_addr       = page_addr;
     uint32_t cur_len        = 0;
     storage_status_t status = STORAGE_OK;
     bool record_start       = true;
 
     while (cur_len < len) {
+        bool blocked = true;
+        status = _storage_is_page_blocked(page_addr, &blocked);
+        if (status != STORAGE_OK) {
+#if STORAGE_DEBUG
+            LOG_TAG_BEDUG(STORAGE_TAG, "write page (address=%lu): check page blocked error=%02X", cur_addr, status);
+#endif
+            return status;
+        }
+
+        if (blocked) {
+#if STORAGE_DEBUG
+            LOG_TAG_BEDUG(STORAGE_TAG, "write page (address=%lu): unavailable address - errors list page", cur_addr);
+#endif
+            return STORAGE_ERROR_BLOCKED;
+        }
+        
         memset((uint8_t*)&payload, 0xFF, sizeof(payload));
 
         if (cur_addr + sizeof(payload) - 1 > _storage_get_size()) {
@@ -340,13 +356,15 @@ storage_status_t _storage_write(uint32_t page_addr, uint8_t* buff, uint32_t len,
         payload.crc = util_get_crc16((uint8_t*)&payload, sizeof(payload) - sizeof(payload.crc));
 
         status = STORAGE_OK;
+        bool errors_list_updated = false;
 
         flash_status_t flash_status = flash_w25qxx_write(cur_addr, (uint8_t*)&payload, sizeof(payload));
         if (_storage_check_header_status_flag(&payload, STORAGE_HEADER_STATUS_APPOINTMENT_COMMON) && (flash_status == FLASH_ERROR)) {
 #if STORAGE_DEBUG
             LOG_TAG_BEDUG(STORAGE_TAG, "write page (address=%lu): try to write errors list page", cur_addr);
 #endif
-            status = _storage_set_page_blocked(page_addr, true);
+            status = _storage_set_page_blocked(cur_addr, true);
+            errors_list_updated = true;
         }
 
         if (_storage_check_header_status_flag(&payload, STORAGE_HEADER_STATUS_APPOINTMENT_COMMON) && (status != STORAGE_OK)) {
@@ -358,9 +376,15 @@ storage_status_t _storage_write(uint32_t page_addr, uint8_t* buff, uint32_t len,
 
         if (status != STORAGE_OK) {
 #if STORAGE_DEBUG
-            LOG_TAG_BEDUG(STORAGE_TAG, "write page (address=%lu): reset errors list pages error", cur_addr);
+            LOG_TAG_BEDUG(STORAGE_TAG, "write page (address=%lu): update errors list pages error", cur_addr);
 #endif
             return status;
+        }
+
+        if (errors_list_updated) {
+            cur_addr = page_addr;
+            cur_len  = 0;
+            continue;
         }
 
         if (flash_status == FLASH_BUSY) {
@@ -384,15 +408,7 @@ storage_status_t _storage_write(uint32_t page_addr, uint8_t* buff, uint32_t len,
             return STORAGE_ERROR;
         }
 
-        if (status != STORAGE_OK) {
-#if STORAGE_DEBUG
-            LOG_TAG_BEDUG(STORAGE_TAG, "write page (address=%lu): update errors list page error", cur_addr);
-#endif
-            return STORAGE_ERROR;
-        }
-
         storage_page_record_t cmpr_payload = { 0 };
-        memset((uint8_t*)&cmpr_payload, 0, sizeof(cmpr_payload));
         flash_status = flash_w25qxx_read(cur_addr, (uint8_t*)&cmpr_payload, sizeof(cmpr_payload));
 
         if (flash_status != FLASH_OK) {
