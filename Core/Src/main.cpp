@@ -65,9 +65,6 @@ uint8_t CUP_uart_val = 0;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
-int _write(int file, uint8_t *ptr, int len);
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/

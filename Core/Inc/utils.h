@@ -51,7 +51,7 @@ void     util_timer_start(dio_timer_t* tm, uint32_t waitMs);
 bool     util_is_timer_wait(dio_timer_t* tm);
 
 
-void     util_debug_hex_dump(const char* tag, const uint8_t* buf, uint16_t len);
+void     util_debug_hex_dump(const char* tag, const uint8_t* buf, uint32_t start_counter, uint16_t len);
 int      util_convert_range(int val, int rngl1, int rngh1, int rngl2, int rngh2);
 uint16_t util_get_crc16(uint8_t* buf, uint16_t len);
 bool     util_wait_event(bool (*condition) (void), uint32_t time);

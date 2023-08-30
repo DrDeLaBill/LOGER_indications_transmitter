@@ -56,7 +56,7 @@ SM::settings_status_t SM::load() {
 		return SETTINGS_ERROR;
 	}
 
-	status = storage_load(sttngs_addr, (uint8_t*)&SM::sttngs, sizeof((uint8_t*)&SM::sttngs));
+	status = storage_load(sttngs_addr, (uint8_t*)&SM::sttngs, sizeof(SM::sttngs));
 	if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
 		LOG_TAG_BEDUG(SM::MODULE_TAG, "load settings: load settings error=%02x", status);
@@ -91,7 +91,7 @@ SM::settings_status_t SM::save() {
 		return SETTINGS_ERROR;
 	}
 
-	status = storage_save(sttngs_addr, (uint8_t*)&SM::sttngs, sizeof((uint8_t*)&SM::sttngs));
+	status = storage_save(sttngs_addr, (uint8_t*)&SM::sttngs, sizeof(SM::sttngs));
 	if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
 		LOG_TAG_BEDUG(SM::MODULE_TAG, "save settings: load settings error=%02x", status);

@@ -38,16 +38,15 @@ uint16_t util_get_crc16(uint8_t* buf, uint16_t len) {
 }
 
 #ifdef DEBUG
-void util_debug_hex_dump(const char* tag, const uint8_t* buf, uint16_t len) {
+void util_debug_hex_dump(const char* tag, const uint8_t* buf, uint32_t start_counter, uint16_t len) {
 	const uint8_t cols_count = 16;
-	for (unsigned int i = 0; i < len / cols_count; i++) {
-		LOG_TAG_BEDUG(tag, "");
-		LOG_BEDUG("%08x: ", i);
+	for (uint32_t i = 0; i < len / cols_count; i++) {
+		LOG_BEDUG("%08X: ", (start_counter + i));
 		for (uint32_t j = 0; j < cols_count; j++) {
 			if (i + j > len) {
 				break;
 			}
-			LOG_BEDUG("%02x ", buf[i + j]);
+			LOG_BEDUG("%02X ", buf[i * cols_count + j]);
 			if (j + 1 == 8) {
 				LOG_BEDUG("| ");
 			}
