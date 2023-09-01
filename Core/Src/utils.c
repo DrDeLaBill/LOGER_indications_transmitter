@@ -47,11 +47,11 @@ void util_debug_hex_dump(const char* tag, const uint8_t* buf, uint32_t start_cou
 				break;
 			}
 			LOG_BEDUG("%02X ", buf[i * cols_count + j]);
-			if (j + 1 == 8) {
+			if ((j + 1) % 8 == 0) {
 				LOG_BEDUG("| ");
 			}
 		}
-		LOG_BEDUG("|\n");
+		LOG_BEDUG("\n");
 	}
 }
 #else /* DEBUG */

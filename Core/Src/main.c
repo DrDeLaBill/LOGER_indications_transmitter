@@ -26,15 +26,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
 
-#include "stm32f4xx_hal.h"
-
-#include "SettingsManager.h"
-#include "RecordManager.h"
-#include "SensorManager.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,44 +46,18 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-SettingsManager* stngs_m;
-SensorManager*   sens_m;
-RecordManager*   rcrd_m;
 
-uint8_t low_modbus_uart_val = 0;
-uint8_t CUP_uart_val = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if (huart->Instance == LOW_MB_UART_INSTC) {
-        modbus_master_recieve_data_byte((uint8_t)low_modbus_uart_val);
-        HAL_UART_Receive_IT(&LOW_MB_UART, (uint8_t*)&low_modbus_uart_val, 1);
-    } // else if (huart->Instance == CUP_UART_INSTANCE) {
-//        CUP_m->char_data_handler(CUP_uart_val);
-//        CUP_TIM.Instance->CNT = 0x00;
-//        __HAL_TIM_CLEAR_FLAG(&CUP_TIM, TIM_SR_UIF);
-//        HAL_TIM_Base_Start_IT(&CUP_TIM);
-//        HAL_UART_Receive_IT(&CUP_UART, (uint8_t*)&CUP_uart_val, 1);
-//    }
-}
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-//    if(htim->Instance == CUP_TIM_INSTANCE) {
-//        CUP_m->timeout();
-//        CUP_TIM.Instance->CNT = 0x00;
-//        __HAL_TIM_CLEAR_FLAG(&CUP_TIM, TIM_SR_UIF);
-//        HAL_TIM_Base_Stop_IT(&CUP_TIM);
-//    }
-}
 /* USER CODE END 0 */
 
 /**
@@ -128,29 +94,17 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_Delay(100);
-  stngs_m = new SettingsManager();
-  rcrd_m  = new RecordManager();
-  sens_m  = new SensorManager();
 
-//  HAL_GPIO_WritePin(BEDUG_LED_GPIO_Port, BEDUG_LED_Pin, GPIO_PIN_RESET);
-  HAL_UART_Receive_IT(&LOW_MB_UART, (uint8_t*)&low_modbus_uart_val, 1);
-//  HAL_UART_Receive_IT(&CUP_UART, (uint8_t*)&CUP_uart_val, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-//  printf("Hello world\n");
-  while (true)
+  while (1)
   {
-    sens_m->proccess();
-//    RecordManager::load(2);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
-
-  return 0;
   /* USER CODE END 3 */
 }
 
@@ -171,9 +125,8 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -185,10 +138,10 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
@@ -197,16 +150,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-int _write(int file, uint8_t *ptr, int len) {
-    HAL_UART_Transmit(&BEDUG_UART, (uint8_t *)ptr, len, DEFAULT_UART_DELAY);
-#ifdef DEBUG
-    for (int DataIdx = 0; DataIdx < len; DataIdx++) {
-        ITM_SendChar(*ptr++);
-    }
-    return len;
-#endif
-}
 
 /* USER CODE END 4 */
 
@@ -219,7 +162,6 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  NVIC_SystemReset();
   while (1)
   {
   }

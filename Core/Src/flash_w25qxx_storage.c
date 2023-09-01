@@ -6,7 +6,50 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "stm32f4xx_hal.h"
+
+#if defined(STM32F100xB) || \
+    defined(STM32F100xE) || \
+    defined(STM32F101x6) || \
+    defined(STM32F101xB) || \
+    defined(STM32F101xE) || \
+    defined(STM32F101xG) || \
+    defined(STM32F102x6) || \
+    defined(STM32F102xB) || \
+    defined(STM32F103x6) || \
+    defined(STM32F103xB) || \
+    defined(STM32F103xE) || \
+    defined(STM32F103xG) || \
+    defined(STM32F105xC) || \
+    defined(STM32F107xC)
+    #include "stm32f1xx_hal.h"
+#elif defined(STM32F405xx) || \
+	defined(STM32F415xx) || \
+	defined(STM32F407xx) || \
+	defined(STM32F417xx) || \
+	defined(STM32F427xx) || \
+	defined(STM32F437xx) || \
+	defined(STM32F429xx) || \
+    defined(STM32F439xx) || \
+    defined(STM32F401xC) || \
+    defined(STM32F401xE) || \
+    defined(STM32F410Tx) || \
+    defined(STM32F410Cx) || \
+    defined(STM32F410Rx) || \
+    defined(STM32F411xE) || \
+    defined(STM32F446xx) || \
+    defined(STM32F469xx) || \
+    defined(STM32F479xx) || \
+    defined(STM32F412Cx) || \
+    defined(STM32F412Zx) || \
+    defined(STM32F412Rx) || \
+    defined(STM32F412Vx) || \
+    defined(STM32F413xx) || \
+    defined(STM32F423xx)
+    #include "stm32f4xx_hal.h"
+#else
+	#error "Please select first the target STM32F4xx device used in your application (in flash_w25qxx_storage.c file)"
+#endif
+
 
 #include "utils.h"
 #include "main.h"
@@ -25,6 +68,22 @@ typedef enum _flash_w25_command_t {
     FLASH_W25_CMD_RESET           = ((uint8_t)0x99),
     FLASH_W25_CMD_JEDEC_ID        = ((uint8_t)0x9f)
 } flash_w25_command_t;
+
+
+typedef struct _flash_w25qxx_info_t {
+    bool     initialized;
+    bool     is_24bit_address;
+
+    uint16_t page_size;
+    uint32_t pages_count;
+
+    uint16_t sector_size;
+    uint16_t sectors_count;
+
+    uint32_t block_size;
+    uint16_t blocks_count;
+} flash_w25qxx_info_t;
+
 
 #define FLASH_W25_JEDEC_ID_SIZE       (sizeof(uint32_t))
 #define FLASH_W25_SR1_BUSY            ((uint8_t)0b00000001)
@@ -92,13 +151,17 @@ flash_w25qxx_info_t flash_w25qxx_info = {
 
 flash_status_t flash_w25qxx_init()
 {
+#if FLASH_BEDUG
+        LOG_TAG_BEDUG(FLASH_TAG, "flash init: begin");
+#endif
+
     _flash_spi_cs_reset();
 
     uint32_t jdec_id = 0;
     flash_status_t status = _flash_read_jdec_id(&jdec_id);
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash init error=%02X (read JDEC ID)", status);
+        LOG_TAG_BEDUG(FLASH_TAG, "flash init: error=%02X (read JDEC ID)", status);
 #endif
         return status;
     }
@@ -114,20 +177,20 @@ flash_status_t flash_w25qxx_init()
 
     if (!flash_w25qxx_info.blocks_count) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash init error - unknown JDEC ID");
+        LOG_TAG_BEDUG(FLASH_TAG, "flash init: error - unknown JDEC ID");
 #endif
         return FLASH_ERROR;
     }
 
 
 #if FLASH_BEDUG
-    LOG_TAG_BEDUG(FLASH_TAG, "flash JDEC ID found: id=%08X, blocks_count=%lu", jdec_id, flash_w25qxx_info.blocks_count);
+    LOG_TAG_BEDUG(FLASH_TAG, "flash JDEC ID found: id=%08X, blocks_count=%u", (unsigned int)jdec_id, flash_w25qxx_info.blocks_count);
 #endif
 
     status = _flash_set_protect_block(FLASH_W25_SR1_BLOCK_VALUE);
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash init error=%02X (block FLASH error)", status);
+        LOG_TAG_BEDUG(FLASH_TAG, "flash init: error=%02X (block FLASH error)", status);
 #endif
         return status;
     }
@@ -135,15 +198,23 @@ flash_status_t flash_w25qxx_init()
     flash_w25qxx_info.initialized      = true;
     flash_w25qxx_info.is_24bit_address = (flash_w25qxx_info.blocks_count >= FLASH_W25_24BIT_ADDR_SIZE) ? true : false;
 
+#if FLASH_BEDUG
+    LOG_TAG_BEDUG(FLASH_TAG, "flash init: OK");
+#endif
+
     return FLASH_OK;
 }
 
 flash_status_t flash_w25qxx_reset()
 {
+#if FLASH_BEDUG
+    LOG_TAG_BEDUG(FLASH_TAG, "flash reset: begin");
+#endif
+
     flash_status_t status = _flash_set_protect_block(FLASH_W25_SR1_UNBLOCK_VALUE);
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash reset error=%02X (unset block protect)", status);
+        LOG_TAG_BEDUG(FLASH_TAG, "flash reset: error=%02X (unset block protect)", status);
 #endif
         status = FLASH_BUSY;
         goto do_block_protect;
@@ -155,7 +226,7 @@ flash_status_t flash_w25qxx_reset()
 
     if (!util_wait_event(_flash_check_FREE, FLASH_SPI_TIMEOUT_MS)) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash reset error (FLASH busy)");
+        LOG_TAG_BEDUG(FLASH_TAG, "flash reset: error (FLASH busy)");
 #endif
         return FLASH_BUSY;
     }
@@ -163,14 +234,14 @@ flash_status_t flash_w25qxx_reset()
     status = _flash_send_data(spi_cmd, sizeof(spi_cmd));
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash reset error=%02X (send command)", status);
+        LOG_TAG_BEDUG(FLASH_TAG, "flash reset: error=%02X (send command)", status);
 #endif
         status = FLASH_BUSY;
     }
 
     if (!util_wait_event(_flash_check_FREE, FLASH_SPI_TIMEOUT_MS)) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash reset error (flash is busy)");
+        LOG_TAG_BEDUG(FLASH_TAG, "flash reset: error (flash is busy)");
 #endif
         return FLASH_BUSY;
     }
@@ -189,9 +260,13 @@ do_block_protect:
 
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash reset error=%02X (set block protected)", status);
+        LOG_TAG_BEDUG(FLASH_TAG, "flash reset: error=%02X (set block protected)", status);
 #endif
         status = FLASH_BUSY;
+    } else {
+#if FLASH_BEDUG
+        LOG_TAG_BEDUG(FLASH_TAG, "flash reset: OK");
+#endif
     }
 
     return status;
@@ -199,6 +274,10 @@ do_block_protect:
 
 flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len)
 {
+#if FLASH_BEDUG
+        LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu: begin", addr);
+#endif
+
     flash_status_t status = FLASH_OK;
     if (!flash_w25qxx_info.initialized) {
         status = flash_w25qxx_init();
@@ -206,14 +285,14 @@ flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len)
 
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu error=%02X (flash was not initialized)", addr, status);
+        LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu: error=%02X (flash was not initialized)", addr, status);
 #endif
         return status;
     }
 
     if (addr + len > _flash_get_storage_bytes_size()) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu error (unacceptable address)", addr);
+        LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu: error (unacceptable address)", addr);
 #endif
         return FLASH_OOM;
     }
@@ -233,7 +312,7 @@ flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len)
 
     if (!util_wait_event(_flash_check_FREE, FLASH_SPI_TIMEOUT_MS)) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu error (FLASH busy)", addr);
+        LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu: error (FLASH busy)", addr);
 #endif
         status = FLASH_BUSY;
         goto do_spi_stop;
@@ -242,7 +321,7 @@ flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len)
     status = _flash_send_data(spi_cmd, counter);
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu error=%02X (send command)", addr, status);
+        LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu: error=%02X (send command)", addr, status);
 #endif
         goto do_spi_stop;
     }
@@ -250,7 +329,7 @@ flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len)
     status = _flash_recieve_data(data, len);
     if (status != FLASH_OK) {
 #if FLASH_BEDUG
-        LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu error=%02X (recieve data)", addr, status);
+        LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu: error=%02X (recieve data)", addr, status);
 #endif
         goto do_spi_stop;
     }
@@ -258,11 +337,20 @@ flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len)
 do_spi_stop:
     _flash_spi_cs_reset();
 
+#if FLASH_BEDUG
+        LOG_TAG_BEDUG(FLASH_TAG, "flash read addr=%lu: OK", addr);
+        util_debug_hex_dump(FLASH_TAG, data, addr, len);
+#endif
+
     return status;
 }
 
 flash_status_t flash_w25qxx_write(uint32_t addr, uint8_t* data, uint32_t len)
 {
+#if FLASH_BEDUG
+        LOG_TAG_BEDUG(FLASH_TAG, "flash write addr=%lu: begin", addr);
+#endif
+
     flash_status_t status = FLASH_OK;
     if (!flash_w25qxx_info.initialized) {
         status = flash_w25qxx_init();
@@ -462,6 +550,12 @@ do_block_protect:
         LOG_TAG_BEDUG(FLASH_TAG, "flash write addr=%lu error(check wrtitten page)", addr);
 #endif
         return FLASH_ERROR;
+    }
+
+    if (status == FLASH_OK) {
+#if FLASH_BEDUG
+        LOG_TAG_BEDUG(FLASH_TAG, "flash write addr=%lu: OK", addr);
+#endif
     }
 
     return status;

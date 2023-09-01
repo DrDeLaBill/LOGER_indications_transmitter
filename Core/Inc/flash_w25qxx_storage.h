@@ -28,21 +28,6 @@ typedef enum _flash_status_t {
 } flash_status_t;
 
 
-typedef struct _flash_w25qxx_info_t {
-    bool     initialized;
-    bool     is_24bit_address;
-
-    uint16_t page_size;
-    uint32_t pages_count;
-
-    uint16_t sector_size;
-    uint16_t sectors_count;
-
-    uint32_t block_size;
-    uint16_t blocks_count;
-} flash_w25qxx_info_t;
-
-
 /**
  *  Initializes the W25Qxx chip.
  *  @return Result status.
@@ -74,7 +59,7 @@ flash_status_t flash_w25qxx_read(uint32_t addr, uint8_t* data, uint32_t len);
 flash_status_t flash_w25qxx_write(uint32_t addr, uint8_t* data, uint32_t len);
 
 /**
- *  @return FLASH pages count.
+ *  @return FLASH memory pages count.
  */
 uint32_t flash_w25qxx_get_pages_count();
 

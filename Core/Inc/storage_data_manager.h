@@ -54,7 +54,7 @@ typedef struct __attribute__((packed)) _storage_payload_header_t {
 
 
 #define STORAGE_PAYLOAD_MAGIC     ((uint32_t)(0xBEDAC0DE))
-#define STORAGE_PAYLOAD_VERSION   ((uint32_t)(3))
+#define STORAGE_PAYLOAD_VERSION   ((uint8_t)(3))
 #define STORAGE_PAGE_SIZE         (FLASH_W25_PAGE_SIZE)
 #define STORAGE_PAGES_COUNT       (FLASH_W25_SECTOR_SIZE / FLASH_W25_PAGE_SIZE)
 #define STORAGE_START_ADDR        ((uint32_t)(0))
